@@ -1,0 +1,4 @@
+minimo absoluto de la pendiente en el día
+pendiente en el cambio de signo de la radiación neta media
+pendiente media en un rango horario antes de la puesta de sol
+último mínimo de la pendiente
