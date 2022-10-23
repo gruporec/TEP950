@@ -11,6 +11,7 @@ from datetime import time
 import sklearn.discriminant_analysis as sklda
 import sklearn.metrics as skmetrics
 import sklearn.decomposition as skdecomp
+import isadoralib as isl
 
 year_train="2014"
 year_data="2019"
@@ -18,41 +19,21 @@ sufix="rht"
 comp=4
 fltp=4
 fmeteo=4
-saveFolder="ignore/figures/PCALDAMETEOresults"
+saveFolder="ignore/figures/PCALDAMETEOresults/2014-2019/"
 n_dias_print=5
 matplotlib.use("Agg")
 
 #pd.set_option('display.max_rows', None)
 
 # Carga de datos de entrenamiento
-dfT = pd.read_csv("rawMinutales"+year_train+sufix+".csv",na_values='.')
-dfT.loc[:,"Fecha"]=pd.to_datetime(dfT.loc[:,"Fecha"])# Fecha como datetime
-dfT=dfT.drop_duplicates(subset="Fecha")
-dfT.dropna(subset = ["Fecha"], inplace=True)
-dfT=dfT.set_index("Fecha")
-dfT=dfT.apply(pd.to_numeric, errors='coerce')
+tdvT,ltpT,meteoT,dfT=isl.cargaDatos(year_train,sufix)
 
-# separa dfT en tdv y ltp en función del principio del nombre de cada columna y guarda el resto en meteoT
-tdvT = dfT.loc[:,dfT.columns.str.startswith('TDV')]
-ltpT = dfT.loc[:,dfT.columns.str.startswith('LTP')]
-meteoT = dfT.drop(dfT.columns[dfT.columns.str.startswith('TDV')], axis=1)
-meteoT = meteoT.drop(meteoT.columns[meteoT.columns.str.startswith('LTP')], axis=1)
 # añade meteo a ltpT
 ltpT=ltpT.join(meteoT)
 
 # Carga de datos de predicción
-dfP = pd.read_csv("rawMinutales"+year_data+sufix+".csv",na_values='.')
-dfP.loc[:,"Fecha"]=pd.to_datetime(dfP.loc[:,"Fecha"])# Fecha como datetime
-dfP=dfP.drop_duplicates(subset="Fecha")
-dfP.dropna(subset = ["Fecha"], inplace=True)
-dfP=dfP.set_index("Fecha")
-dfP=dfP.apply(pd.to_numeric, errors='coerce')
+tdvP,ltpP,meteoP,dfP=isl.cargaDatos(year_data,sufix)
 
-# separa dfP en tdv y ltp en función del principio del nombre de cada columna y guarda el resto en meteoP
-tdvP = dfP.loc[:,dfP.columns.str.startswith('TDV')]
-ltpP = dfP.loc[:,dfP.columns.str.startswith('LTP')]
-meteoP = dfP.drop(dfP.columns[dfP.columns.str.startswith('TDV')], axis=1)
-meteoP = meteoP.drop(meteoP.columns[meteoP.columns.str.startswith('LTP')], axis=1)
 # añade meteo a ltpP
 ltpP=ltpP.join(meteoP)
 
@@ -188,6 +169,8 @@ ltpP.index = [ltpP.index.strftime('%Y-%m-%d'),ltpP['Hora_norm']]
 ltpT.index = [ltpT.index.strftime('%Y-%m-%d'),ltpT['Hora_norm']]
 
 #crea el índice de ltpPBase
+print('indice de ltpBase')
+print(ltpPBase)
 ltpPBase['Hora_norm']=ltpPBase['Hora_norm'].apply(pd.to_timedelta,unit='H')
 ltpPBase['dia_norm'] = ltpPBase.index.strftime('%Y-%m-%d')
 ltpPBase.index = [ltpPBase['dia_norm'].apply(pd.to_datetime,format='%Y-%m-%d'),ltpPBase['Hora_norm']]
@@ -197,6 +180,8 @@ ltpPBase=ltpPBase.unstack(level=0)
 
 valdatapd.index = valdatapd.index.strftime('%Y-%m-%d')
 trdatapd.index = trdatapd.index.strftime('%Y-%m-%d')
+
+print('fin indice')
 
 #obtiene el índice interseccion de valdatapd y el primer nivel del índice de ltp
 ltpPdates = ltpP.index.get_level_values(0)
@@ -317,6 +302,10 @@ for i in ltpt.columns.levels[0]:
     merge_ltp_meteo = pd.merge(ltpt.loc[:,i],meteoT_col,how='outer')
     # añade la unión al array de numpy
     array_ltpt=np.append(array_ltpt,merge_ltp_meteo.values,axis=1)
+print(ltpt)
+print(meteo_ltp)
+print(meteoT_norm)
+print(ltpt_col)
 
 # crea los valores X e y para el modelo
 Xtr=array_ltpt.transpose()
@@ -330,7 +319,6 @@ Yv=valdatapd.unstack().values
 # elimina los valores NaN de Xtr y Xv
 XtrBase = np.nan_to_num(Xtr)
 XvBase = np.nan_to_num(Xv)
-
 
 # crea un array de tamaño MaxComp
 #aplica PCA
@@ -408,77 +396,77 @@ for i in range(len(Ypred)):
         if not os.path.exists(currFolder):
             os.makedirs(currFolder)
 
-        # crea una figura con dos subplots
-        fig = plt.figure(figsize=(10,10))
-        plt.subplot(2,1,1)
-        plt.plot(range(len(XvBase[i])),XvBase[i],label='XvBase')
+            # crea una figura con dos subplots
+            fig = plt.figure(figsize=(10,10))
+            plt.subplot(2,1,1)
+            plt.plot(range(len(XvBase[i])),XvBase[i],label='XvBase')
 
-        plt.plot(range(len(pca.inverse_transform(clf.coef_)[0])),pca.inverse_transform(clf.coef_)[0],label='Estrés 1')
-        plt.plot(range(len(pca.inverse_transform(clf.coef_)[1])),pca.inverse_transform(clf.coef_)[1],label='Estrés 2')
-        plt.plot(range(len(pca.inverse_transform(clf.coef_)[2])),pca.inverse_transform(clf.coef_)[2],label='Estrés 3')
-        
-        #agrega una leyenda
-        plt.legend()
-        #agrega una etiqueta a los ejes
-        plt.xlabel('Característica número')
-        plt.ylabel('Valor')
+            plt.plot(range(len(pca.inverse_transform(clf.coef_)[0])),pca.inverse_transform(clf.coef_)[0],label='Estrés 1')
+            plt.plot(range(len(pca.inverse_transform(clf.coef_)[1])),pca.inverse_transform(clf.coef_)[1],label='Estrés 2')
+            plt.plot(range(len(pca.inverse_transform(clf.coef_)[2])),pca.inverse_transform(clf.coef_)[2],label='Estrés 3')
+            
+            #agrega una leyenda
+            plt.legend()
+            #agrega una etiqueta a los ejes
+            plt.xlabel('Característica número')
+            plt.ylabel('Valor')
 
-        
-        plt.subplot(2,1,2)
-        plt.plot(range(len(Xv[i])),Xv[i],label='Xv')
-        plt.plot(range(len(clf.coef_[0])),clf.coef_[0],label='Estrés 1')
-        plt.plot(range(len(clf.coef_[1])),clf.coef_[1],label='Estrés 2')
-        plt.plot(range(len(clf.coef_[2])),clf.coef_[2],label='Estrés 3')
-        
-        #agrega una leyenda
-        plt.legend()
-        #agrega una etiqueta a los ejes
-        plt.xlabel('Característica número')
-        plt.ylabel('Valor')
+            
+            plt.subplot(2,1,2)
+            plt.plot(range(len(Xv[i])),Xv[i],label='Xv')
+            plt.plot(range(len(clf.coef_[0])),clf.coef_[0],label='Estrés 1')
+            plt.plot(range(len(clf.coef_[1])),clf.coef_[1],label='Estrés 2')
+            plt.plot(range(len(clf.coef_[2])),clf.coef_[2],label='Estrés 3')
+            
+            #agrega una leyenda
+            plt.legend()
+            #agrega una etiqueta a los ejes
+            plt.xlabel('Característica número')
+            plt.ylabel('Valor')
 
-        plt.savefig(currFolder+'/DatosIA.png')
-        plt.close()
-        #f = open(currFolder+'/informe y notas.txt', "w")
-        #prob1=res.iloc[:,i]['probabilidad estado 1']*100
-        #prob2=res.iloc[:,i]['probabilidad estado 2']*100
-        #prob3=res.iloc[:,i]['probabilidad estado 3']*100
-        #informe='Aparece como '+str(res.iloc[:,i]['estado real'])+' __ en las notas del IRNAS.\nDías anteriores y posteriores __.\n\nLa IA devuelve un estado 1 con una probabilidad del '+f'{prob1:.2f}'+'%, estado 2 con una probabilidad del '+f'{prob2:.2f}'+'% y estado 3 con una probabilidad del '+f'{prob3:.2f}'+'%.\n\nEn observación manual de la curva, se observa ___.'
-        #f.write(informe)
-        #f.close()
-        
-        plotSensor=res.iloc[:,i].name[0]
-        plotDate=pd.to_datetime(res.iloc[:,i].name[1])
-        meteod=meteoPlot[plotDate-pd.Timedelta(n_dias_print-1,'d'):plotDate+pd.Timedelta(1,'d')]
-        ltpd=ltpPlot[plotSensor][plotDate-pd.Timedelta(n_dias_print-1,'d'):plotDate+pd.Timedelta(1,'d')]
+            plt.savefig(currFolder+'/DatosIA.png')
+            plt.close()
+            #f = open(currFolder+'/informe y notas.txt', "w")
+            #prob1=res.iloc[:,i]['probabilidad estado 1']*100
+            #prob2=res.iloc[:,i]['probabilidad estado 2']*100
+            #prob3=res.iloc[:,i]['probabilidad estado 3']*100
+            #informe='Aparece como '+str(res.iloc[:,i]['estado real'])+' __ en las notas del IRNAS.\nDías anteriores y posteriores __.\n\nLa IA devuelve un estado 1 con una probabilidad del '+f'{prob1:.2f}'+'%, estado 2 con una probabilidad del '+f'{prob2:.2f}'+'% y estado 3 con una probabilidad del '+f'{prob3:.2f}'+'%.\n\nEn observación manual de la curva, se observa ___.'
+            #f.write(informe)
+            #f.close()
+            
+            plotSensor=res.iloc[:,i].name[0]
+            plotDate=pd.to_datetime(res.iloc[:,i].name[1])
+            meteod=meteoPlot[plotDate-pd.Timedelta(n_dias_print-1,'d'):plotDate+pd.Timedelta(1,'d')]
+            ltpd=ltpPlot[plotSensor][plotDate-pd.Timedelta(n_dias_print-1,'d'):plotDate+pd.Timedelta(1,'d')]
 
-        fig, [ax1,ax2,ax3,ax4,ax5] = plt.subplots(5,1)
+            fig, [ax1,ax2,ax3,ax4,ax5] = plt.subplots(5,1)
 
-        ax1.plot(ltpd)
-        ax1.set(xlabel='Hora', ylabel='LTP', title=plotSensor+' '+str(plotDate))
-        ax1.fill_between(meteod.index, ltpd.min(), ltpd.max(), where=(meteod['R_Neta_Avg'] < 0), alpha=0.5,color=(232/255, 222/255, 164/255, 0.5))
-        ax1.grid()
+            ax1.plot(ltpd)
+            ax1.set(xlabel='Hora', ylabel='LTP', title=plotSensor+' '+str(plotDate))
+            ax1.fill_between(meteod.index, ltpd.min(), ltpd.max(), where=(meteod['R_Neta_Avg'] < 0), alpha=0.5,color=(232/255, 222/255, 164/255, 0.5))
+            ax1.grid()
 
-        ax2.plot(meteod['T_Amb_Avg'])
-        ax2.set(xlabel='Hora', ylabel='T amb (ºC)')
-        ax2.fill_between(meteod.index, meteod['T_Amb_Avg'].min(), meteod['T_Amb_Avg'].max(), where=(meteod['R_Neta_Avg'] < 0), alpha=0.5,color=(232/255, 222/255, 164/255, 0.5))
-        ax2.grid()
+            ax2.plot(meteod['T_Amb_Avg'])
+            ax2.set(xlabel='Hora', ylabel='T amb (ºC)')
+            ax2.fill_between(meteod.index, meteod['T_Amb_Avg'].min(), meteod['T_Amb_Avg'].max(), where=(meteod['R_Neta_Avg'] < 0), alpha=0.5,color=(232/255, 222/255, 164/255, 0.5))
+            ax2.grid()
 
-        ax3.plot(meteod['H_Relat_Avg'])
-        ax3.set(xlabel='Hora', ylabel='H rel (%)')
-        ax3.fill_between(meteod.index, meteod['H_Relat_Avg'].min(), meteod['H_Relat_Avg'].max(), where=(meteod['R_Neta_Avg'] < 0), alpha=0.5,color=(232/255, 222/255, 164/255, 0.5))
-        ax3.grid()
+            ax3.plot(meteod['H_Relat_Avg'])
+            ax3.set(xlabel='Hora', ylabel='H rel (%)')
+            ax3.fill_between(meteod.index, meteod['H_Relat_Avg'].min(), meteod['H_Relat_Avg'].max(), where=(meteod['R_Neta_Avg'] < 0), alpha=0.5,color=(232/255, 222/255, 164/255, 0.5))
+            ax3.grid()
 
-        ax4.plot(meteod['VPD_Avg'])
-        ax4.set(xlabel='Hora', ylabel='VPD')
-        ax4.fill_between(meteod.index, meteod['VPD_Avg'].min(), meteod['VPD_Avg'].max(), where=(meteod['R_Neta_Avg'] < 0), alpha=0.5,color=(232/255, 222/255, 164/255, 0.5))
-        ax4.grid()
+            ax4.plot(meteod['VPD_Avg'])
+            ax4.set(xlabel='Hora', ylabel='VPD')
+            ax4.fill_between(meteod.index, meteod['VPD_Avg'].min(), meteod['VPD_Avg'].max(), where=(meteod['R_Neta_Avg'] < 0), alpha=0.5,color=(232/255, 222/255, 164/255, 0.5))
+            ax4.grid()
 
-        ax5.plot(meteod['R_Neta_Avg'])
-        ax5.set(xlabel='Hora', ylabel='Rad Neta')
-        ax5.fill_between(meteod.index, meteod['R_Neta_Avg'].min(), meteod['R_Neta_Avg'].max(), where=(meteod['R_Neta_Avg'] < 0), alpha=0.5,color=(232/255, 222/255, 164/255, 0.5))
-        ax5.grid()
-        plt.savefig(currFolder+'/DatosRaw.png')
-        plt.close()
+            ax5.plot(meteod['R_Neta_Avg'])
+            ax5.set(xlabel='Hora', ylabel='Rad Neta')
+            ax5.fill_between(meteod.index, meteod['R_Neta_Avg'].min(), meteod['R_Neta_Avg'].max(), where=(meteod['R_Neta_Avg'] < 0), alpha=0.5,color=(232/255, 222/255, 164/255, 0.5))
+            ax5.grid()
+            plt.savefig(currFolder+'/DatosRaw.png')
+            plt.close()
 
 sys.exit()
 

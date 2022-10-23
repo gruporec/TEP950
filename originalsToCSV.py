@@ -17,7 +17,7 @@ for file in files:
           
           df1=df1.set_index('Fecha')
                
-          df2.columns=(df2.columns+' '+df2.iloc[0,:].astype(str).replace('NaT', '')).str.strip(to_strip=None)
+          df2.columns=(df2.iloc[0,:].astype(str).replace('NaT', '')+' '+df2.columns).str.strip(to_strip=None)
           df2=df2.drop(0)
           print(df2)
           df2=df2.set_index('Fecha')
@@ -25,7 +25,7 @@ for file in files:
           df3aux2=pd.DataFrame()
           for i in range(int(len(df3.columns)/2)):
                df3aux1=df3.iloc[:,2*i:2*i+2]
-               df3aux1.columns=['Fecha',df3aux1.columns[1]+' '+df3aux1.iloc[0,1]]
+               df3aux1.columns=['Fecha',df3aux1.iloc[0,1]+' '+df3aux1.columns[1]]
                df3aux1=df3aux1.drop(0)
                df3aux1=df3aux1.dropna()
                df3aux1=df3aux1.set_index('Fecha')
@@ -51,5 +51,6 @@ for file in files:
           df3.to_csv(path_out+os.path.splitext(file)[0]+'/'+os.path.splitext(file)[0]+' Hoja 32'+'.csv')
           df4.to_csv(path_out+os.path.splitext(file)[0]+'/'+os.path.splitext(file)[0]+' Hoja 4'+'.csv')
           df5['ZIMS'].to_csv(path_out+os.path.splitext(file)[0]+'/'+os.path.splitext(file)[0]+' Hoja 2'+'.csv')
+          df5['ZIMS'].to_csv(path_out+os.path.splitext(file)[0]+'/validacion'+os.path.splitext(file)[0]+'.csv')
           df5['DENDROMETROS'].to_csv(path_out+os.path.splitext(file)[0]+'/Estados Dendrometros'+'.csv')
           df5['ESTADO HIDRICO PARCELAS'].to_csv(path_out+os.path.splitext(file)[0]+'/Estados Parcelas'+'.csv')
