@@ -1,7 +1,7 @@
 import pandas as pd
 
 def cargaDatos(year,sufix):
-    '''Carga los datos de un año almacenados en el archivo [year][sufix].csv y devuelve una tupla (tdv,ltp,meteo,raw).'''
+    '''Carga los datos de un año almacenados en los archivos [year][sufix].csv y validacion[year].csv y devuelve una tupla (tdv,ltp,meteo,estado hídrico).'''
     # Carga de datos
     df = pd.read_csv("rawMinutales"+year+sufix+".csv",na_values='.')
     df.loc[:,"Fecha"]=pd.to_datetime(df.loc[:,"Fecha"])# Fecha como datetime
@@ -16,4 +16,10 @@ def cargaDatos(year,sufix):
     meteo = df.drop(df.columns[df.columns.str.startswith('TDV')], axis=1)
     meteo = meteo.drop(meteo.columns[meteo.columns.str.startswith('LTP')], axis=1)
 
-    return (tdv,ltp,meteo,df)
+    # Carga datos de validacion
+    valdatapd=pd.read_csv("validacion"+year+".csv")
+    valdatapd.dropna(inplace=True)
+    valdatapd['Fecha'] = pd.to_datetime(valdatapd['Fecha'])
+    valdatapd.set_index('Fecha',inplace=True)
+
+    return (tdv,ltp,meteo,valdatapd)

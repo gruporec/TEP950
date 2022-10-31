@@ -13,50 +13,38 @@ import sklearn.metrics as skmetrics
 import sklearn.decomposition as skdecomp
 import isadoralib as isl
 
-year_train="2014"
+year_train="2019"
 year_data="2019"
 sufix="rht"
 comp=4
 fltp=4
 fmeteo=4
-saveFolder="ignore/figures/PCALDAMETEOresults/2014-2019/"
+saveFolder="ignore/figures/PCALDAMETEOresults/"+year_train+"-"+year_data+"-"+sufix+"/"
 n_dias_print=5
 matplotlib.use("Agg")
 
 #pd.set_option('display.max_rows', None)
 
 # Carga de datos de entrenamiento
-tdvT,ltpT,meteoT,dfT=isl.cargaDatos(year_train,sufix)
+tdvT,ltpT,meteoT,trdatapd=isl.cargaDatos(year_train,sufix)
+
+# Carga de datos de predicción
+tdvP,ltpP,meteoP,valdatapd=isl.cargaDatos(year_data,sufix)
+
+# guarda la información raw para plots
+ltpPlot = ltpP.copy()
+meteoPlot = meteoP.copy()
 
 # añade meteo a ltpT
 ltpT=ltpT.join(meteoT)
-
-# Carga de datos de predicción
-tdvP,ltpP,meteoP,dfP=isl.cargaDatos(year_data,sufix)
+# elimina los valores NaN de ltp
+ltpT = ltpT.dropna(axis=1,how='all')
 
 # añade meteo a ltpP
 ltpP=ltpP.join(meteoP)
 
-# guarda la información raw para plots
-ltpPlot = dfP.loc[:,dfP.columns.str.startswith('LTP')]
-meteoPlot = dfP.drop(dfP.columns[dfP.columns.str.startswith('TDV')], axis=1)
-meteoPlot = meteoPlot.drop(meteoPlot.columns[meteoPlot.columns.str.startswith('LTP')], axis=1)
-
-# Carga datos de validacion
-valdatapd=pd.read_csv("validacion"+year_data+".csv")
-valdatapd.dropna(inplace=True)
-valdatapd['Fecha'] = pd.to_datetime(valdatapd['Fecha'])
-valdatapd.set_index('Fecha',inplace=True)
-
-# Carga datos de resultados de entrenamiento
-trdatapd=pd.read_csv("validacion"+year_train+".csv")
-trdatapd.dropna(inplace=True)
-trdatapd['Fecha'] = pd.to_datetime(trdatapd['Fecha'])
-trdatapd.set_index('Fecha',inplace=True)
-
 # elimina los valores NaN de ltp
 ltpP = ltpP.dropna(axis=1,how='all')
-ltpT = ltpT.dropna(axis=1,how='all')
 # rellena los valores NaN de ltp con el valor anterior
 ltpP = ltpP.fillna(method='ffill')
 ltpT = ltpT.fillna(method='ffill')
@@ -71,9 +59,11 @@ ltpT = ltpT.rolling(window=240,center=True).mean()
 # calcula el valor medio de ltp para cada dia
 ltp_medioP = ltpP.groupby(ltpP.index.date).mean()
 ltp_medioT = ltpT.groupby(ltpT.index.date).mean()
+
 # calcula el valor de la desviación estándar de ltp para cada dia
 ltp_stdP = ltpP.groupby(ltpP.index.date).std()
 ltp_stdT = ltpT.groupby(ltpT.index.date).std()
+
 # cambia el índice a datetime
 ltp_medioP.index = pd.to_datetime(ltp_medioP.index)
 ltp_medioT.index = pd.to_datetime(ltp_medioT.index)
@@ -87,6 +77,7 @@ ltp_stdP = ltp_stdP.resample('T').pad()
 ltp_stdT = ltp_stdT.resample('T').pad()
 
 # normaliza ltp para cada dia
+
 ltpP = (ltpP - ltp_medioP) / ltp_stdP
 ltpT = (ltpT - ltp_medioT) / ltp_stdT
 
@@ -302,9 +293,13 @@ for i in ltpt.columns.levels[0]:
     merge_ltp_meteo = pd.merge(ltpt.loc[:,i],meteoT_col,how='outer')
     # añade la unión al array de numpy
     array_ltpt=np.append(array_ltpt,merge_ltp_meteo.values,axis=1)
+print("ltpt")
 print(ltpt)
+print("meteo_ltp")
 print(meteo_ltp)
+print("meteoT_norm")
 print(meteoT_norm)
+print("ltpt_col")
 print(ltpt_col)
 
 # crea los valores X e y para el modelo
@@ -385,7 +380,6 @@ res['error']=res['estado real']-res['estado estimado']
 res['probabilidad estado 1']=Yprob[:,0]
 res['probabilidad estado 2']=Yprob[:,1]
 res['probabilidad estado 3']=Yprob[:,2]
-
 res.to_csv('resClasPCALDAMeteo'+year_train+year_data+sufix+'2.csv')
 
 res = res.transpose()
