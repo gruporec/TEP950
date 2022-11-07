@@ -7,19 +7,19 @@ import os
 import matplotlib.pyplot as plt
 import matplotlib.dates as mdates
 import numpy as np
-from datetime import time
+import datetime
 import sklearn.discriminant_analysis as sklda
 import sklearn.metrics as skmetrics
 import sklearn.decomposition as skdecomp
 import isadoralib as isl
-
+ndias=5
 year_train="2014"
 year_data="2019"
 sufix="rht"
 comp=4
 fltp=4
 fmeteo=4
-saveFolder="ignore/figures/PCALDAMETEOresults/"+year_train+"-"+year_data+"-"+sufix+"/"
+saveFolder="ignore/figures/PCALDAMETEOresults"+str(ndias)+"/"+year_train+"-"+year_data+"-"+sufix+"/"
 n_dias_print=5
 matplotlib.use("Agg")
 
@@ -35,26 +35,36 @@ tdvP,ltpP,meteoP,valdatapd=isl.cargaDatos(year_data,sufix)
 ltpPlot = ltpP.copy()
 meteoPlot = meteoP.copy()
 
-# añade meteo a ltpT
-ltpT=ltpT.join(meteoT)
-# elimina los valores NaN de ltp
-ltpT = ltpT.dropna(axis=1,how='all')
+# # añade meteo a ltpT
+# ltpT=ltpT.join(meteoT)
+# # elimina los valores NaN de ltp
+# ltpT = ltpT.dropna(axis=1,how='all')
 
-# añade meteo a ltpP
-ltpP=ltpP.join(meteoP)
+# # añade meteo a ltpP
+# ltpP=ltpP.join(meteoP)
+# # elimina los valores NaN de ltp
+# ltpP = ltpP.dropna(axis=1,how='all')
 
-# elimina los valores NaN de ltp
-ltpP = ltpP.dropna(axis=1,how='all')
-# rellena los valores NaN de ltp con el valor anterior
-ltpP = ltpP.fillna(method='ffill')
-ltpT = ltpT.fillna(method='ffill')
-# rellena los valores NaN de ltp con el valor siguiente
-ltpP = ltpP.fillna(method='bfill')
-ltpT = ltpT.fillna(method='bfill')
+# # rellena los valores NaN de ltp con el valor anterior
+# ltpP = ltpP.fillna(method='ffill')
+# ltpT = ltpT.fillna(method='ffill')
+# # rellena los valores NaN de ltp con el valor siguiente
+# ltpP = ltpP.fillna(method='bfill')
+# ltpT = ltpT.fillna(method='bfill')
 
 # aplica un filtro de media móvil a ltp
 ltpP = ltpP.rolling(window=240,center=True).mean()
 ltpT = ltpT.rolling(window=240,center=True).mean()
+print(ltpP)
+
+ltpP['Dia'] = pd.to_datetime(ltpP.index).date
+ltpP['Delta'] = pd.to_datetime(ltpP.index) - pd.to_datetime(ltpP.index).normalize()
+# ltpP['Delta']= ltpP['Delta']-datetime.timedelta(days=1)
+# ltpP['Dia']= ltpP['Dia']+datetime.timedelta(days=1)
+ltpP=ltpP.set_index(['Dia','Delta']).unstack(0)
+
+print(ltpP)
+sys.exit()
 
 # calcula el valor medio de ltp para cada dia
 ltp_medioP = ltpP.groupby(ltpP.index.date).mean()
@@ -293,14 +303,6 @@ for i in ltpt.columns.levels[0]:
     merge_ltp_meteo = pd.merge(ltpt.loc[:,i],meteoT_col,how='outer')
     # añade la unión al array de numpy
     array_ltpt=np.append(array_ltpt,merge_ltp_meteo.values,axis=1)
-print("ltpt")
-print(ltpt)
-print("meteo_ltp")
-print(meteo_ltp)
-print("meteoT_norm")
-print(meteoT_norm)
-print("ltpt_col")
-print(ltpt_col)
 
 # crea los valores X e y para el modelo
 Xtr=array_ltpt.transpose()
