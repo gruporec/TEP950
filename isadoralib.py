@@ -23,3 +23,30 @@ def cargaDatos(year,sufix):
     valdatapd.set_index('Fecha',inplace=True)
 
     return (tdv,ltp,meteo,valdatapd)
+
+def datosADataframe(ltp:pd.DataFrame,meteo:pd.DataFrame,valdatapd:pd.DataFrame):
+    '''Almacena los datos de ltp y meteo en un dataframe x y los de valdata en una serie y con la forma adecuada para convertirlos a arrays de numpy para scikit o bien para continuar su procesado'''
+    ltp['Dia'] = pd.to_datetime(ltp.index).date
+    ltp['Delta'] = pd.to_datetime(ltp.index) - pd.to_datetime(ltp.index).normalize()
+
+
+    meteo['Dia'] = pd.to_datetime(meteo.index).date
+    meteo['Delta'] = pd.to_datetime(meteo.index) - pd.to_datetime(meteo.index).normalize()
+
+    # ltpPdia = ltpP.loc[meteoP['R_Neta_Avg']>0]
+
+    ltp=ltp.set_index(['Dia','Delta']).unstack(0)
+    meteo=meteo.set_index(['Dia','Delta']).unstack(0).stack(0)
+    valdatapd=valdatapd.unstack()
+
+    common_col = ltp.columns.intersection(valdatapd.index)
+    ltp=ltp[common_col]
+    y=valdatapd[common_col]
+
+    meteoPext=pd.DataFrame(columns=ltp.columns)
+    for col in meteoPext:
+        meteoPext[col]=meteo[col[1]]
+    x=meteoPext.unstack(0)
+    x.loc['LTP']=ltp.unstack(0)
+    x=x.stack(2)
+    return (x, y)
