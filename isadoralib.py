@@ -24,7 +24,7 @@ def cargaDatos(year,sufix):
 
     return (tdv,ltp,meteo,valdatapd)
 
-def datosADataframe(ltp:pd.DataFrame,meteo:pd.DataFrame,valdatapd:pd.DataFrame):
+def datosADataframe(ltp:pd.DataFrame,meteo:pd.DataFrame,valdatapd:pd.DataFrame) -> tuple[pd.DataFrame,pd.Series]:
     '''Almacena los datos de ltp y meteo en un dataframe x y los de valdata en una serie y con la forma adecuada para convertirlos a arrays de numpy para scikit o bien para continuar su procesado'''
     ltp['Dia'] = pd.to_datetime(ltp.index).date
     ltp['Delta'] = pd.to_datetime(ltp.index) - pd.to_datetime(ltp.index).normalize()
