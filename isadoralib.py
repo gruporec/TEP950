@@ -48,5 +48,6 @@ def datosADataframe(ltp:pd.DataFrame,meteo:pd.DataFrame,valdatapd:pd.DataFrame) 
         meteoPext[col]=meteo[col[1]]
     x=meteoPext.unstack(0)
     x.loc['LTP']=ltp.unstack(0)
+    print(x)
     x=x.stack(2)
     return (x, y)
