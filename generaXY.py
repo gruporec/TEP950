@@ -12,7 +12,7 @@ import sklearn.discriminant_analysis as sklda
 import sklearn.metrics as skmetrics
 import sklearn.decomposition as skdecomp
 import isadoralib as isl
-year="2015"
+year="2019"
 sufix=""
 comp=4
 fltp=4

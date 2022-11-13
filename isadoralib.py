@@ -25,7 +25,7 @@ def cargaDatos(year,sufix):
     return (tdv,ltp,meteo,valdatapd)
 
 def datosADataframe(ltp:pd.DataFrame,meteo:pd.DataFrame,valdatapd:pd.DataFrame) -> tuple[pd.DataFrame,pd.Series]:
-    '''Almacena los datos de ltp y meteo en un dataframe x y los de valdata en una serie y con la forma adecuada para convertirlos a arrays de numpy para scikit o bien para continuar su procesado'''
+    '''Almacena los datos de ltp y meteo en un dataframe x y los de valdata en una serie y con la forma adecuada para convertirlos a arrays de numpy para scikit o bien para continuar su procesado. X e Y no se reducen a columnas comunes.'''
     ltp['Dia'] = pd.to_datetime(ltp.index).date
     ltp['Delta'] = pd.to_datetime(ltp.index) - pd.to_datetime(ltp.index).normalize()
 
@@ -39,9 +39,9 @@ def datosADataframe(ltp:pd.DataFrame,meteo:pd.DataFrame,valdatapd:pd.DataFrame) 
     meteo=meteo.set_index(['Dia','Delta']).unstack(0).stack(0)
     valdatapd=valdatapd.unstack()
 
-    common_col = ltp.columns.intersection(valdatapd.index)
-    ltp=ltp[common_col]
-    y=valdatapd[common_col]
+    #common_col = ltp.columns.intersection(valdatapd.index)
+    #ltp=ltp[common_col]
+    y=valdatapd#[common_col]
 
     meteoPext=pd.DataFrame(columns=ltp.columns)
     for col in meteoPext:
