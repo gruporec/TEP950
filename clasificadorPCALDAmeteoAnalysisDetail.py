@@ -17,22 +17,15 @@ import isadoralib as isl
 year_train="2014"
 year_datas=["2015","2016","2019"]
 sufix="rht"
-comp=4
-maxltpitems=120
-maxmeteoitems=120
-minltpitems=3
-minmeteoitems=3
-stepltp=39
-stepmeteo=39
-
-n_dias_print=5
-matplotlib.use("Agg")
+ltpitems=81
+meteoitems=3
+comp=11
 
 res=pd.DataFrame()
 #pd.set_option('display.max_rows', None)
 for year_data in year_datas:
     print(year_data)
-    saveFolder="ignore/figures/PCALDAMETEOresults/"+year_train+"-"+year_data+"-"+sufix+"/"
+    #saveFolder="ignore/figures/PCALDAMETEOresults/"+year_train+"-"+year_data+"-"+sufix+"/"
     # Carga de datos de entrenamiento
     tdvT,ltpT,meteoT,trdatapd=isl.cargaDatos(year_train,sufix)
 
@@ -219,153 +212,150 @@ for year_data in year_datas:
     meteoP_norm_orig=meteoP_norm.copy()
     meteoT_norm_orig=meteoT_norm.copy()
 
+    print('ltpitems:'+str(ltpitems))
+    fltp=12/ltpitems
+    print('meteoitems:'+str(meteoitems))
+    fmeteo=12/meteoitems
+    print((str(int(fmeteo*1000))+'L'))
+    # convierte el indice a datetime para ajustar frecuencias
+    ltpv=ltpv_orig.resample(str(int(fltp*1000))+'L').mean()
+    ltpt=ltpt_orig.resample(str(int(fltp*1000))+'L').mean()
+    meteoP_norm=meteoP_norm_orig.resample(str(int(fmeteo*1000))+'L').mean()
+    meteoT_norm=meteoT_norm_orig.resample(str(int(fmeteo*1000))+'L').mean()
 
-    for ltpitems in range(minltpitems,maxltpitems,stepltp):
-        print('ltpitems:'+str(ltpitems))
-        fltp=12/ltpitems
-        for meteoitems in range(minmeteoitems,maxmeteoitems,stepmeteo):
-            print('meteoitems:'+str(meteoitems))
-            fmeteo=12/meteoitems
-            print((str(int(fmeteo*1000))+'L'))
-            # convierte el indice a datetime para ajustar frecuencias
-            ltpv=ltpv_orig.resample(str(int(fltp*1000))+'L').mean()
-            ltpt=ltpt_orig.resample(str(int(fltp*1000))+'L').mean()
-            meteoP_norm=meteoP_norm_orig.resample(str(int(fmeteo*1000))+'L').mean()
-            meteoT_norm=meteoT_norm_orig.resample(str(int(fmeteo*1000))+'L').mean()
-
-            # conserva los valores de 1970-01-01 00:00:06.000 a 1970-01-01 00:00:17.900
-            ltpv = ltpv.loc[ltpv.index>=pd.to_datetime('1970-01-01 00:00:06.000'),:]
-            ltpt = ltpt.loc[ltpt.index>=pd.to_datetime('1970-01-01 00:00:06.000'),:]
-            ltpv = ltpv.loc[ltpv.index<=pd.to_datetime('1970-01-01 00:00:17.900'),:]
-            ltpt = ltpt.loc[ltpt.index<=pd.to_datetime('1970-01-01 00:00:17.900'),:]
-            meteoP_norm = meteoP_norm.loc[meteoP_norm.index>=pd.to_datetime('1970-01-01 00:00:06.000'),:]
-            meteoP_norm = meteoP_norm.loc[meteoP_norm.index<=pd.to_datetime('1970-01-01 00:00:17.900'),:]
-            meteoT_norm = meteoT_norm.loc[meteoT_norm.index>=pd.to_datetime('1970-01-01 00:00:06.000'),:]
-            meteoT_norm = meteoT_norm.loc[meteoT_norm.index<=pd.to_datetime('1970-01-01 00:00:17.900'),:]
+    # conserva los valores de 1970-01-01 00:00:06.000 a 1970-01-01 00:00:17.900
+    ltpv = ltpv.loc[ltpv.index>=pd.to_datetime('1970-01-01 00:00:06.000'),:]
+    ltpt = ltpt.loc[ltpt.index>=pd.to_datetime('1970-01-01 00:00:06.000'),:]
+    ltpv = ltpv.loc[ltpv.index<=pd.to_datetime('1970-01-01 00:00:17.900'),:]
+    ltpt = ltpt.loc[ltpt.index<=pd.to_datetime('1970-01-01 00:00:17.900'),:]
+    meteoP_norm = meteoP_norm.loc[meteoP_norm.index>=pd.to_datetime('1970-01-01 00:00:06.000'),:]
+    meteoP_norm = meteoP_norm.loc[meteoP_norm.index<=pd.to_datetime('1970-01-01 00:00:17.900'),:]
+    meteoT_norm = meteoT_norm.loc[meteoT_norm.index>=pd.to_datetime('1970-01-01 00:00:06.000'),:]
+    meteoT_norm = meteoT_norm.loc[meteoT_norm.index<=pd.to_datetime('1970-01-01 00:00:17.900'),:]
 
 
-            # Crea una serie para restaurar el índice
-            norm_index=pd.Series(np.arange(6,18,fltp))
-            #recorta norm_index para que coincida con el tamano de ltpt si se ha producido un desajuste al calcular el dataframe
-            norm_index=norm_index.loc[norm_index.index<len(ltpt)]
-            # Ajusta el índice de ltpv a la serie
-            ltpv.index=norm_index
-            # Ajusta el índice de ltpt a la serie
-            ltpt.index=norm_index
-            # Crea una serie para restaurar el índice
-            norm_index=pd.Series(np.arange(6,18,fmeteo))
-            #recorta norm_index para que coincida con el tamano de meteoP_norm si se ha producido un desajuste al calcular el dataframe
-            norm_index=norm_index.loc[norm_index.index<len(meteoT_norm)]
-            # Ajusta el índice de meteoP_norm a la serie
-            meteoP_norm.index=norm_index
-            # Ajusta el índice de meteoT_norm a la serie
-            meteoT_norm.index=norm_index
+    # Crea una serie para restaurar el índice
+    norm_index=pd.Series(np.arange(6,18,fltp))
+    #recorta norm_index para que coincida con el tamano de ltpt si se ha producido un desajuste al calcular el dataframe
+    norm_index=norm_index.loc[norm_index.index<len(ltpt)]
+    # Ajusta el índice de ltpv a la serie
+    ltpv.index=norm_index
+    # Ajusta el índice de ltpt a la serie
+    ltpt.index=norm_index
+    # Crea una serie para restaurar el índice
+    norm_index=pd.Series(np.arange(6,18,fmeteo))
+    #recorta norm_index para que coincida con el tamano de meteoP_norm si se ha producido un desajuste al calcular el dataframe
+    norm_index=norm_index.loc[norm_index.index<len(meteoT_norm)]
+    # Ajusta el índice de meteoP_norm a la serie
+    meteoP_norm.index=norm_index
+    # Ajusta el índice de meteoT_norm a la serie
+    meteoT_norm.index=norm_index
 
-            # dropea la columna Hora_norm de meteo
-            meteoP_norm = meteoP_norm.drop('Hora_norm',axis=1)
-            meteoT_norm = meteoT_norm.drop('Hora_norm',axis=1)
+    # dropea la columna Hora_norm de meteo
+    meteoP_norm = meteoP_norm.drop('Hora_norm',axis=1)
+    meteoT_norm = meteoT_norm.drop('Hora_norm',axis=1)
 
-            # stackea meteoP_norm y meteoT_norm
-            meteoP_norm = meteoP_norm.stack(level=0)
-            meteoT_norm = meteoT_norm.stack(level=0)
+    # stackea meteoP_norm y meteoT_norm
+    meteoP_norm = meteoP_norm.stack(level=0)
+    meteoT_norm = meteoT_norm.stack(level=0)
 
-            #intercambia los niveles del índice de meteo
-            meteoP_norm.index = meteoP_norm.index.swaplevel(0,1)
-            meteoT_norm.index = meteoT_norm.index.swaplevel(0,1)
+    #intercambia los niveles del índice de meteo
+    meteoP_norm.index = meteoP_norm.index.swaplevel(0,1)
+    meteoT_norm.index = meteoT_norm.index.swaplevel(0,1)
 
-            meteoP_norm=meteoP_norm.dropna(axis=1,how='all')
-            meteoT_norm=meteoT_norm.dropna(axis=1,how='all')
+    meteoP_norm=meteoP_norm.dropna(axis=1,how='all')
+    meteoT_norm=meteoT_norm.dropna(axis=1,how='all')
 
-            #combina los dos índices de meteo
-            meteoP_norm.index = meteoP_norm.index.map('{0[1]}/{0[0]}'.format)
-            meteoT_norm.index = meteoT_norm.index.map('{0[1]}/{0[0]}'.format)
+    #combina los dos índices de meteo
+    meteoP_norm.index = meteoP_norm.index.map('{0[1]}/{0[0]}'.format)
+    meteoT_norm.index = meteoT_norm.index.map('{0[1]}/{0[0]}'.format)
 
-            #elimina los indices no comunes de meteo
-            meteoP_norm = meteoP_norm.loc[meteoP_norm.index.isin(meteoT_norm.index)]
-            meteoT_norm = meteoT_norm.loc[meteoT_norm.index.isin(meteoP_norm.index)]
+    #elimina los indices no comunes de meteo
+    meteoP_norm = meteoP_norm.loc[meteoP_norm.index.isin(meteoT_norm.index)]
+    meteoT_norm = meteoT_norm.loc[meteoT_norm.index.isin(meteoP_norm.index)]
 
-            #crea un array de numpy en blanco
-            array_ltpv=np.empty((len(ltpv)+len(meteoP_norm),0))
-            array_ltpt=np.empty((len(ltpt)+len(meteoT_norm),0))
+    #crea un array de numpy en blanco
+    array_ltpv=np.empty((len(ltpv)+len(meteoP_norm),0))
+    array_ltpt=np.empty((len(ltpt)+len(meteoT_norm),0))
 
-            #por cada elemento en el primer índice de columnas de ltp
-            for i in ltpv.columns.levels[0]:
-                ltpv_col=ltpv.loc[:,i]
-                # elimina los valores de meteo que no estén en ltp_col
-                meteo_ltp = ltpv_col.columns.intersection(meteoP_norm.columns)
-                meteoP_col = meteoP_norm.loc[:,meteo_ltp]
+    #por cada elemento en el primer índice de columnas de ltp
+    for i in ltpv.columns.levels[0]:
+        ltpv_col=ltpv.loc[:,i]
+        # elimina los valores de meteo que no estén en ltp_col
+        meteo_ltp = ltpv_col.columns.intersection(meteoP_norm.columns)
+        meteoP_col = meteoP_norm.loc[:,meteo_ltp]
 
-                # combina los valores de ltpv con los de meteo
-                merge_ltp_meteo = pd.merge(ltpv.loc[:,i],meteoP_col,how='outer')
-                # añade la unión al array de numpy
-                array_ltpv=np.append(array_ltpv,merge_ltp_meteo.values,axis=1)
+        # combina los valores de ltpv con los de meteo
+        merge_ltp_meteo = pd.merge(ltpv.loc[:,i],meteoP_col,how='outer')
+        # añade la unión al array de numpy
+        array_ltpv=np.append(array_ltpv,merge_ltp_meteo.values,axis=1)
 
-            #por cada elemento en el primer índice de columnas de ltp
-            for i in ltpt.columns.levels[0]:
-                ltpt_col=ltpt.loc[:,i]
-                # elimina los valores de meteo que no estén en ltp_col
-                meteo_ltp = ltpt_col.columns.intersection(meteoT_norm.columns)
-                meteoT_col = meteoT_norm.loc[:,meteo_ltp]
+    #por cada elemento en el primer índice de columnas de ltp
+    for i in ltpt.columns.levels[0]:
+        ltpt_col=ltpt.loc[:,i]
+        # elimina los valores de meteo que no estén en ltp_col
+        meteo_ltp = ltpt_col.columns.intersection(meteoT_norm.columns)
+        meteoT_col = meteoT_norm.loc[:,meteo_ltp]
 
-                # combina los valores de ltpv con los de meteo
-                merge_ltp_meteo = pd.merge(ltpt.loc[:,i],meteoT_col,how='outer')
-                # añade la unión al array de numpy
-                array_ltpt=np.append(array_ltpt,merge_ltp_meteo.values,axis=1)
-            # print("ltpt")
-            # print(ltpt)
-            # print("meteo_ltp")
-            # print(meteo_ltp)
-            # print("meteoT_norm")
-            # print(meteoT_norm)
-            # print("ltpt_col")
-            # print(ltpt_col)
+        # combina los valores de ltpv con los de meteo
+        merge_ltp_meteo = pd.merge(ltpt.loc[:,i],meteoT_col,how='outer')
+        # añade la unión al array de numpy
+        array_ltpt=np.append(array_ltpt,merge_ltp_meteo.values,axis=1)
+    # print("ltpt")
+    # print(ltpt)
+    # print("meteo_ltp")
+    # print(meteo_ltp)
+    # print("meteoT_norm")
+    # print(meteoT_norm)
+    # print("ltpt_col")
+    # print(ltpt_col)
 
-            # crea los valores X e y para el modelo
-            Xtr=array_ltpt.transpose()
-            Ytr=trdatapd.unstack().values
-            Xv=array_ltpv.transpose()
-            Yv=valdatapd.unstack().values
+    # crea los valores X e y para el modelo
+    Xtr=array_ltpt.transpose()
+    Ytr=trdatapd.unstack().values
+    Xv=array_ltpv.transpose()
+    Yv=valdatapd.unstack().values
 
-            #print(np.shape(Xtr))
-            #print(np.shape(Xv))
+    #print(np.shape(Xtr))
+    #print(np.shape(Xv))
 
-            # elimina los valores NaN de Xtr y Xv
-            XtrBase = np.nan_to_num(Xtr)
-            XvBase = np.nan_to_num(Xv)
+    # elimina los valores NaN de Xtr y Xv
+    XtrBase = np.nan_to_num(Xtr)
+    XvBase = np.nan_to_num(Xv)
 
-            for comp in range(0,XtrBase.shape[1],math.ceil(XtrBase.shape[1]/10)):
-                print('comp:'+str(comp+1))
-                # crea un array de tamaño MaxComp
-                #aplica PCA
-                pca = skdecomp.PCA(n_components=comp+1)
-                pca.fit(XtrBase)
-                Xtr = pca.transform(XtrBase)
-                Xv = pca.transform(XvBase)
+    #for comp in range(0,XtrBase.shape[1],math.ceil(XtrBase.shape[1]/10)):
+    print('comp:'+str(comp))
+    # crea un array de tamaño MaxComp
+    #aplica PCA
+    pca = skdecomp.PCA(n_components=comp)
+    pca.fit(XtrBase)
+    Xtr = pca.transform(XtrBase)
+    Xv = pca.transform(XvBase)
 
-                # crea el modelo
-                clf = sklda.LinearDiscriminantAnalysis(solver='svd')
-                # entrena el modelo
-                clf.fit(Xtr,Ytr)
-                # predice los valores de Yv
-                Ypred=clf.predict(Xv)
+    # crea el modelo
+    clf = sklda.LinearDiscriminantAnalysis(solver='svd')
+    # entrena el modelo
+    clf.fit(Xtr,Ytr)
+    # predice los valores de Yv
+    Ypred=clf.predict(Xv)
 
-                # predice las probabilidades de Yv
-                Yprob=clf.predict_proba(Xv)
+    # predice las probabilidades de Yv
+    Yprob=clf.predict_proba(Xv)
 
-                # calcula la matriz de confusion
+    # calcula la matriz de confusion
 
-                # confusion_matrix = skmetrics.confusion_matrix(Yv, Ypred)
-                # print(confusion_matrix)
+    # confusion_matrix = skmetrics.confusion_matrix(Yv, Ypred)
+    # print(confusion_matrix)
 
-                bcm=skmetrics.confusion_matrix(Yv, Ypred,normalize='true')
-                print(bcm)
+    bcm=skmetrics.confusion_matrix(Yv, Ypred,normalize='true')
+    print(bcm)
 
-                # calcula el porcentaje de acierto
-                accuracy = skmetrics.balanced_accuracy_score(Yv, Ypred)
-                print('Porcentaje de acierto: '+str(accuracy*100)+'%')
-                res=res.append({'ltp samples':ltpitems,'meteo samples':meteoitems,'year data':year_data,'components from PCA':comp+1,'accuracy':accuracy},ignore_index=True)
-                # res=res.append({'ltp samples':ltpitems,'meteo samples':meteoitems,'year train':year_train,'year data':year_data,'components from PCA':comp+1,'accuracy':accuracy,'confusion matrix':np.around(bcm,2)},ignore_index=True)
-                # res=res.append({'ltp':ltpitems,'meteo':meteoitems,'year train':year_train,'year data':year_data,'comp':comp,'acc':accuracy,'cmatrix':"\\begin{tabular}{ ccc }"+(" \\\\\n".join([" & ".join(map(str,line)) for line in bcm]))+"\\end{tabular}"},ignore_index=True)
+    # calcula el porcentaje de acierto
+    accuracy = skmetrics.balanced_accuracy_score(Yv, Ypred)
+    print('Porcentaje de acierto: '+str(accuracy*100)+'%')
+    res=res.append({'ltp samples':ltpitems,'meteo samples':meteoitems,'year data':year_data,'components from PCA':comp+1,'accuracy':accuracy},ignore_index=True)
+    # res=res.append({'ltp samples':ltpitems,'meteo samples':meteoitems,'year train':year_train,'year data':year_data,'components from PCA':comp+1,'accuracy':accuracy,'confusion matrix':np.around(bcm,2)},ignore_index=True)
+    # res=res.append({'ltp':ltpitems,'meteo':meteoitems,'year train':year_train,'year data':year_data,'comp':comp,'acc':accuracy,'cmatrix':"\\begin{tabular}{ ccc }"+(" \\\\\n".join([" & ".join(map(str,line)) for line in bcm]))+"\\end{tabular}"},ignore_index=True)
 res.set_index(['year data','ltp samples','meteo samples','components from PCA'], inplace=True) 
 res=res.unstack(level=0)
 mean=res.mean(numeric_only=True, axis=1)
@@ -374,4 +364,4 @@ res['total accuracy']=mean
 res['accuracy variation']=var
 res=res.sort_values(['total accuracy'], ascending=False)
 print(res)
-res.to_latex('resultadosPCALDAlatex.txt',longtable=True)
+#res.to_latex('resultadosPCALDAlatex.txt',longtable=True)
