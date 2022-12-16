@@ -1,5 +1,4 @@
 import sys
-from time import time
 from matplotlib.markers import MarkerStyle
 import matplotlib
 import pandas as pd
@@ -13,24 +12,34 @@ import sklearn.discriminant_analysis as sklda
 import sklearn.metrics as skmetrics
 import sklearn.decomposition as skdecomp
 import isadoralib as isl
+import time as tm
 
 year_train="2014"
 year_datas=["2015","2016","2019"]
 sufix="rht"
-comp=4
-maxltpitems=120
-maxmeteoitems=120
-minltpitems=3
-minmeteoitems=3
-stepltp=39
-stepmeteo=39
+
+# maxltpitems=120
+# maxmeteoitems=120
+# minltpitems=3
+# minmeteoitems=3
+# stepltp=39
+# stepmeteo=39
+
+# lptlist=[*range(minltpitems,maxltpitems,stepltp)]
+# meteolist=[*range(minmeteoitems,maxmeteoitems,stepmeteo)]
+
+lptlist=[1,2,3,4,5,6,7,8,9,10,20,30,40,50,60,70,80,90,100,110,120]
+meteolist=[0,1,2,3,4,5,6,7,8,9,10,20,30,40,50,60,70,80,90,100,110,120]
 
 n_dias_print=5
 matplotlib.use("Agg")
 
 res=pd.DataFrame()
+times=pd.DataFrame()
 #pd.set_option('display.max_rows', None)
+
 for year_data in year_datas:
+    timepreprostart=tm.time()
     print(year_data)
     saveFolder="ignore/figures/PCALDAMETEOresults/"+year_train+"-"+year_data+"-"+sufix+"/"
     # Carga de datos de entrenamiento
@@ -219,16 +228,18 @@ for year_data in year_datas:
     meteoP_norm_orig=meteoP_norm.copy()
     meteoT_norm_orig=meteoT_norm.copy()
 
-    for ltpitems in range(minltpitems,maxltpitems,stepltp):
-        print('ltpitems:'+str(ltpitems))
-        fltp=12/ltpitems
-        for meteoitems in range(minmeteoitems,maxmeteoitems,stepmeteo):
+    timepreproend=tm.time()
+    preprotime=timepreproend-timepreprostart
+    for ltpitems in lptlist:
+        for meteoitems in meteolist:
+            print('ltpitems:'+str(ltpitems))
             print('meteoitems:'+str(meteoitems))
+            timeloopstart=tm.time()
+            fltp=12/ltpitems
             if meteoitems>0:
                 fmeteo=12/meteoitems
             else:
                 fmeteo=0
-            print((str(int(fmeteo*1000))+'L'))
             # convierte el indice a datetime para ajustar frecuencias
             ltpv=ltpv_orig.resample(str(int(fltp*1000))+'L').mean()
             ltpt=ltpt_orig.resample(str(int(fltp*1000))+'L').mean()
@@ -348,12 +359,14 @@ for year_data in year_datas:
             # elimina los valores NaN de Xtr y Xv
             XtrBase = np.nan_to_num(Xtr)
             XvBase = np.nan_to_num(Xv)
-
-            for comp in range(0,XtrBase.shape[1],math.ceil(XtrBase.shape[1]/10)):
-                print('comp:'+str(comp+1))
+            timeloopend=tm.time()
+            looptime=timeloopend-timeloopstart
+            for comp in range(1,XtrBase.shape[1]+1,math.ceil((XtrBase.shape[1]+1)/10)):
+                timeclasstart=tm.time()
+                #print('comp:'+str(comp))
                 # crea un array de tamaño MaxComp
                 #aplica PCA
-                pca = skdecomp.PCA(n_components=comp+1)
+                pca = skdecomp.PCA(n_components=comp)
                 pca.fit(XtrBase)
                 Xtr = pca.transform(XtrBase)
                 Xv = pca.transform(XvBase)
@@ -374,20 +387,30 @@ for year_data in year_datas:
                 # print(confusion_matrix)
 
                 bcm=skmetrics.confusion_matrix(Yv, Ypred,normalize='true')
-                print(bcm)
+                #print(bcm)
 
                 # calcula el porcentaje de acierto
                 accuracy = skmetrics.balanced_accuracy_score(Yv, Ypred)
-                print('Porcentaje de acierto: '+str(accuracy*100)+'%')
-                res=res.append({'ltp samples':ltpitems,'meteo samples':meteoitems,'year data':year_data,'components from PCA':comp+1,'accuracy':accuracy},ignore_index=True)
-                # res=res.append({'ltp samples':ltpitems,'meteo samples':meteoitems,'year train':year_train,'year data':year_data,'components from PCA':comp+1,'accuracy':accuracy,'confusion matrix':np.around(bcm,2)},ignore_index=True)
+                res=res.append({'ltp samples':ltpitems,'meteo samples':meteoitems,'year data':year_data,'components from PCA':comp,'fraction from total PCA':np.around(comp/XtrBase.shape[1],1),'accuracy':accuracy},ignore_index=True)
+                # res=res.append({'ltp samples':ltpitems,'meteo samples':meteoitems,'year train':year_train,'year data':year_data,'components from PCA':comp,'accuracy':accuracy,'confusion matrix':np.around(bcm,2)},ignore_index=True)
                 # res=res.append({'ltp':ltpitems,'meteo':meteoitems,'year train':year_train,'year data':year_data,'comp':comp,'acc':accuracy,'cmatrix':"\\begin{tabular}{ ccc }"+(" \\\\\n".join([" & ".join(map(str,line)) for line in bcm]))+"\\end{tabular}"},ignore_index=True)
-res.set_index(['year data','ltp samples','meteo samples','components from PCA'], inplace=True) 
+                
+                timeclasend=tm.time()
+                clastime=timeclasend-timeclasstart
+                print('Porcentaje de acierto: '+str(accuracy*100)+'%')
+                print('frac PCA: '+str(np.around(comp/XtrBase.shape[1],1)))
+                times=times.append({'ltp samples':ltpitems,'meteo samples':meteoitems,'year data':year_data,'components from PCA':comp,'fraction from total PCA':np.around(comp/XtrBase.shape[1],1),'preprocess':preprotime,'process':looptime,'classifier':clastime,'total':preprotime+looptime+clastime},ignore_index=True)
+res.set_index(['year data','ltp samples','meteo samples','components from PCA','fraction from total PCA'], inplace=True) 
 res=res.unstack(level=0)
+
+times.set_index(['year data','ltp samples','meteo samples','components from PCA','fraction from total PCA'], inplace=True) 
+times=times.unstack(level=0)
+
 mean=res.mean(numeric_only=True, axis=1)
 var=res.var(numeric_only=True, axis=1)
 res['total accuracy']=mean
 res['accuracy variation']=var
-res=res.sort_values(['total accuracy'], ascending=False)
+#res=res.sort_values(['total accuracy'], ascending=False)
 print(res)
-res.to_latex('resultadosPCALDAlatex.txt',longtable=True)
+res.to_csv('ignore/analisisPCALDA/resultadosPCALDA.csv')
+times.to_csv('ignore/analisisPCALDA/tiemposPCALDA.csv')

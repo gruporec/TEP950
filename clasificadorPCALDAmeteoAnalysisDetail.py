@@ -18,7 +18,7 @@ year_train="2014"
 year_datas=["2015","2016","2019"]
 sufix="rht"
 ltpitems=81
-meteoitems=3
+meteoitems=0
 comp=11
 
 res=pd.DataFrame()
@@ -215,23 +215,29 @@ for year_data in year_datas:
     print('ltpitems:'+str(ltpitems))
     fltp=12/ltpitems
     print('meteoitems:'+str(meteoitems))
-    fmeteo=12/meteoitems
+    if meteoitems>0:
+        fmeteo=12/meteoitems
+    else:
+        fmeteo=0
     print((str(int(fmeteo*1000))+'L'))
     # convierte el indice a datetime para ajustar frecuencias
     ltpv=ltpv_orig.resample(str(int(fltp*1000))+'L').mean()
     ltpt=ltpt_orig.resample(str(int(fltp*1000))+'L').mean()
-    meteoP_norm=meteoP_norm_orig.resample(str(int(fmeteo*1000))+'L').mean()
-    meteoT_norm=meteoT_norm_orig.resample(str(int(fmeteo*1000))+'L').mean()
+    if meteoitems>0:
+        meteoP_norm=meteoP_norm_orig.resample(str(int(fmeteo*1000))+'L').mean()
+        meteoT_norm=meteoT_norm_orig.resample(str(int(fmeteo*1000))+'L').mean()
 
     # conserva los valores de 1970-01-01 00:00:06.000 a 1970-01-01 00:00:17.900
     ltpv = ltpv.loc[ltpv.index>=pd.to_datetime('1970-01-01 00:00:06.000'),:]
     ltpt = ltpt.loc[ltpt.index>=pd.to_datetime('1970-01-01 00:00:06.000'),:]
     ltpv = ltpv.loc[ltpv.index<=pd.to_datetime('1970-01-01 00:00:17.900'),:]
     ltpt = ltpt.loc[ltpt.index<=pd.to_datetime('1970-01-01 00:00:17.900'),:]
-    meteoP_norm = meteoP_norm.loc[meteoP_norm.index>=pd.to_datetime('1970-01-01 00:00:06.000'),:]
-    meteoP_norm = meteoP_norm.loc[meteoP_norm.index<=pd.to_datetime('1970-01-01 00:00:17.900'),:]
-    meteoT_norm = meteoT_norm.loc[meteoT_norm.index>=pd.to_datetime('1970-01-01 00:00:06.000'),:]
-    meteoT_norm = meteoT_norm.loc[meteoT_norm.index<=pd.to_datetime('1970-01-01 00:00:17.900'),:]
+
+    if meteoitems>0:
+        meteoP_norm = meteoP_norm.loc[meteoP_norm.index>=pd.to_datetime('1970-01-01 00:00:06.000'),:]
+        meteoP_norm = meteoP_norm.loc[meteoP_norm.index<=pd.to_datetime('1970-01-01 00:00:17.900'),:]
+        meteoT_norm = meteoT_norm.loc[meteoT_norm.index>=pd.to_datetime('1970-01-01 00:00:06.000'),:]
+        meteoT_norm = meteoT_norm.loc[meteoT_norm.index<=pd.to_datetime('1970-01-01 00:00:17.900'),:]
 
 
     # Crea una serie para restaurar el índice
@@ -242,37 +248,42 @@ for year_data in year_datas:
     ltpv.index=norm_index
     # Ajusta el índice de ltpt a la serie
     ltpt.index=norm_index
-    # Crea una serie para restaurar el índice
-    norm_index=pd.Series(np.arange(6,18,fmeteo))
-    #recorta norm_index para que coincida con el tamano de meteoP_norm si se ha producido un desajuste al calcular el dataframe
-    norm_index=norm_index.loc[norm_index.index<len(meteoT_norm)]
-    # Ajusta el índice de meteoP_norm a la serie
-    meteoP_norm.index=norm_index
-    # Ajusta el índice de meteoT_norm a la serie
-    meteoT_norm.index=norm_index
 
-    # dropea la columna Hora_norm de meteo
-    meteoP_norm = meteoP_norm.drop('Hora_norm',axis=1)
-    meteoT_norm = meteoT_norm.drop('Hora_norm',axis=1)
+    if meteoitems>0:
+        # Crea una serie para restaurar el índice
+        norm_index=pd.Series(np.arange(6,18,fmeteo))
+        #recorta norm_index para que coincida con el tamano de meteoP_norm si se ha producido un desajuste al calcular el dataframe
+        norm_index=norm_index.loc[norm_index.index<len(meteoT_norm)]
+        # Ajusta el índice de meteoP_norm a la serie
+        meteoP_norm.index=norm_index
+        # Ajusta el índice de meteoT_norm a la serie
+        meteoT_norm.index=norm_index
 
-    # stackea meteoP_norm y meteoT_norm
-    meteoP_norm = meteoP_norm.stack(level=0)
-    meteoT_norm = meteoT_norm.stack(level=0)
+        # dropea la columna Hora_norm de meteo
+        meteoP_norm = meteoP_norm.drop('Hora_norm',axis=1)
+        meteoT_norm = meteoT_norm.drop('Hora_norm',axis=1)
 
-    #intercambia los niveles del índice de meteo
-    meteoP_norm.index = meteoP_norm.index.swaplevel(0,1)
-    meteoT_norm.index = meteoT_norm.index.swaplevel(0,1)
+        # stackea meteoP_norm y meteoT_norm
+        meteoP_norm = meteoP_norm.stack(level=0)
+        meteoT_norm = meteoT_norm.stack(level=0)
 
-    meteoP_norm=meteoP_norm.dropna(axis=1,how='all')
-    meteoT_norm=meteoT_norm.dropna(axis=1,how='all')
+        #intercambia los niveles del índice de meteo
+        meteoP_norm.index = meteoP_norm.index.swaplevel(0,1)
+        meteoT_norm.index = meteoT_norm.index.swaplevel(0,1)
 
-    #combina los dos índices de meteo
-    meteoP_norm.index = meteoP_norm.index.map('{0[1]}/{0[0]}'.format)
-    meteoT_norm.index = meteoT_norm.index.map('{0[1]}/{0[0]}'.format)
+        meteoP_norm=meteoP_norm.dropna(axis=1,how='all')
+        meteoT_norm=meteoT_norm.dropna(axis=1,how='all')
 
-    #elimina los indices no comunes de meteo
-    meteoP_norm = meteoP_norm.loc[meteoP_norm.index.isin(meteoT_norm.index)]
-    meteoT_norm = meteoT_norm.loc[meteoT_norm.index.isin(meteoP_norm.index)]
+        #combina los dos índices de meteo
+        meteoP_norm.index = meteoP_norm.index.map('{0[1]}/{0[0]}'.format)
+        meteoT_norm.index = meteoT_norm.index.map('{0[1]}/{0[0]}'.format)
+
+        #elimina los indices no comunes de meteo
+        meteoP_norm = meteoP_norm.loc[meteoP_norm.index.isin(meteoT_norm.index)]
+        meteoT_norm = meteoT_norm.loc[meteoT_norm.index.isin(meteoP_norm.index)]
+    else:
+        meteoP_norm = pd.DataFrame()
+        meteoT_norm = pd.DataFrame()
 
     #crea un array de numpy en blanco
     array_ltpv=np.empty((len(ltpv)+len(meteoP_norm),0))
@@ -281,24 +292,30 @@ for year_data in year_datas:
     #por cada elemento en el primer índice de columnas de ltp
     for i in ltpv.columns.levels[0]:
         ltpv_col=ltpv.loc[:,i]
-        # elimina los valores de meteo que no estén en ltp_col
-        meteo_ltp = ltpv_col.columns.intersection(meteoP_norm.columns)
-        meteoP_col = meteoP_norm.loc[:,meteo_ltp]
+        if meteoitems>0:
+            # elimina los valores de meteo que no estén en ltp_col
+            meteo_ltp = ltpv_col.columns.intersection(meteoP_norm.columns)
+            meteoP_col = meteoP_norm.loc[:,meteo_ltp]
 
-        # combina los valores de ltpv con los de meteo
-        merge_ltp_meteo = pd.merge(ltpv.loc[:,i],meteoP_col,how='outer')
+            # combina los valores de ltpv con los de meteo
+            merge_ltp_meteo = pd.merge(ltpv.loc[:,i],meteoP_col,how='outer')
+        else:
+            merge_ltp_meteo = ltpv.loc[:,i]
         # añade la unión al array de numpy
         array_ltpv=np.append(array_ltpv,merge_ltp_meteo.values,axis=1)
 
     #por cada elemento en el primer índice de columnas de ltp
     for i in ltpt.columns.levels[0]:
         ltpt_col=ltpt.loc[:,i]
-        # elimina los valores de meteo que no estén en ltp_col
-        meteo_ltp = ltpt_col.columns.intersection(meteoT_norm.columns)
-        meteoT_col = meteoT_norm.loc[:,meteo_ltp]
+        if meteoitems>0:
+            # elimina los valores de meteo que no estén en ltp_col
+            meteo_ltp = ltpt_col.columns.intersection(meteoT_norm.columns)
+            meteoT_col = meteoT_norm.loc[:,meteo_ltp]
 
-        # combina los valores de ltpv con los de meteo
-        merge_ltp_meteo = pd.merge(ltpt.loc[:,i],meteoT_col,how='outer')
+            # combina los valores de ltpv con los de meteo
+            merge_ltp_meteo = pd.merge(ltpt.loc[:,i],meteoT_col,how='outer')
+        else:
+            merge_ltp_meteo = ltpt.loc[:,i]
         # añade la unión al array de numpy
         array_ltpt=np.append(array_ltpt,merge_ltp_meteo.values,axis=1)
     # print("ltpt")
