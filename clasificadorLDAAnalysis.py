@@ -28,9 +28,8 @@ sufix="rht"
 # lptlist=[*range(minltpitems,maxltpitems,stepltp)]
 # meteolist=[*range(minmeteoitems,maxmeteoitems,stepmeteo)]
 #Haz con LTP de [10:3:50] por ejemplo con PCA de [10:3:50] y meteo [0:1:9] Son 1000 datos más
-lptlist=[*range(10,100,3)]
-meteolist=[*range(0,10,1)]
-LDAlist=[*range(1,50,3)] 
+lptlist=[*range(1,50,1)]
+meteolist=[0]
 
 n_dias_print=5
 matplotlib.use("Agg")
@@ -42,7 +41,6 @@ times=pd.DataFrame()
 for year_data in year_datas:
     timepreprostart=tm.time()
     print(year_data)
-    saveFolder="ignore/figures/PCALDAMETEOresults/"+year_train+"-"+year_data+"-"+sufix+"/"
     # Carga de datos de entrenamiento
     tdvT,ltpT,meteoT,trdatapd=isl.cargaDatos(year_train,sufix)
 
@@ -358,54 +356,43 @@ for year_data in year_datas:
             #print(np.shape(Xv))
 
             # elimina los valores NaN de Xtr y Xv
-            XtrBase = np.nan_to_num(Xtr)
-            XvBase = np.nan_to_num(Xv)
+            Xtr = np.nan_to_num(Xtr)
+            Xv = np.nan_to_num(Xv)
             timeloopend=tm.time()
             looptime=timeloopend-timeloopstart
-            LDAlistcrop=[i for i in LDAlist if i <= XtrBase.shape[1]] 
-            for comp in LDAlistcrop: #range(1,XtrBase.shape[1]+1,math.ceil((XtrBase.shape[1]+1)/10)):
-                timeclasstart=tm.time()
-                #print('comp:'+str(comp))
-                # crea un array de tamaño MaxComp
-                #aplica PCA
-                pca = skdecomp.PCA(n_components=comp)
-                pca.fit(XtrBase)
-                Xtr = pca.transform(XtrBase)
-                Xv = pca.transform(XvBase)
 
-                # crea el modelo
-                clf = sklda.LinearDiscriminantAnalysis(solver='svd')
-                # entrena el modelo
-                clf.fit(Xtr,Ytr)
-                # predice los valores de Yv
-                Ypred=clf.predict(Xv)
+            # crea el modelo
+            clf = sklda.LinearDiscriminantAnalysis(solver='svd')
+            # entrena el modelo
+            clf.fit(Xtr,Ytr)
+            # predice los valores de Yv
+            Ypred=clf.predict(Xv)
 
-                # predice las probabilidades de Yv
-                Yprob=clf.predict_proba(Xv)
+            # predice las probabilidades de Yv
+            Yprob=clf.predict_proba(Xv)
 
-                # calcula la matriz de confusion
+            # calcula la matriz de confusion
 
-                # confusion_matrix = skmetrics.confusion_matrix(Yv, Ypred)
-                # print(confusion_matrix)
+            # confusion_matrix = skmetrics.confusion_matrix(Yv, Ypred)
+            # print(confusion_matrix)
 
-                bcm=skmetrics.confusion_matrix(Yv, Ypred,normalize='true')
-                #print(bcm)
+            bcm=skmetrics.confusion_matrix(Yv, Ypred,normalize='true')
+            #print(bcm)
 
-                # calcula el porcentaje de acierto
-                accuracy = skmetrics.balanced_accuracy_score(Yv, Ypred)
-                res=res.append({'ltp samples':ltpitems,'meteo samples':meteoitems,'year data':year_data,'components from PCA':comp,'fraction from total PCA':np.around(comp/XtrBase.shape[1],1),'accuracy':accuracy},ignore_index=True)
-                # res=res.append({'ltp samples':ltpitems,'meteo samples':meteoitems,'year train':year_train,'year data':year_data,'components from PCA':comp,'accuracy':accuracy,'confusion matrix':np.around(bcm,2)},ignore_index=True)
-                # res=res.append({'ltp':ltpitems,'meteo':meteoitems,'year train':year_train,'year data':year_data,'comp':comp,'acc':accuracy,'cmatrix':"\\begin{tabular}{ ccc }"+(" \\\\\n".join([" & ".join(map(str,line)) for line in bcm]))+"\\end{tabular}"},ignore_index=True)
-                
-                timeclasend=tm.time()
-                clastime=timeclasend-timeclasstart
-                print('Porcentaje de acierto: '+str(accuracy*100)+'%')
-                print('frac PCA: '+str(np.around(comp/XtrBase.shape[1],1)))
-                times=times.append({'ltp samples':ltpitems,'meteo samples':meteoitems,'year data':year_data,'components from PCA':comp,'fraction from total PCA':np.around(comp/XtrBase.shape[1],1),'preprocess':preprotime,'process':looptime,'classifier':clastime,'total':preprotime+looptime+clastime},ignore_index=True)
-res.set_index(['year data','ltp samples','meteo samples','components from PCA','fraction from total PCA'], inplace=True) 
+            # calcula el porcentaje de acierto
+            accuracy = skmetrics.balanced_accuracy_score(Yv, Ypred)
+            res=res.append({'ltp samples':ltpitems,'year data':year_data,'accuracy':accuracy},ignore_index=True)
+            # res=res.append({'ltp samples':ltpitems,'meteo samples':meteoitems,'year train':year_train,'year data':year_data,'components from PCA':comp,'accuracy':accuracy,'confusion matrix':np.around(bcm,2)},ignore_index=True)
+            # res=res.append({'ltp':ltpitems,'meteo':meteoitems,'year train':year_train,'year data':year_data,'comp':comp,'acc':accuracy,'cmatrix':"\\begin{tabular}{ ccc }"+(" \\\\\n".join([" & ".join(map(str,line)) for line in bcm]))+"\\end{tabular}"},ignore_index=True)
+            
+            timeclasend=tm.time()
+            clastime=timeclasend-timeloopend
+            print('Porcentaje de acierto: '+str(accuracy*100)+'%')
+            times=times.append({'ltp samples':ltpitems,'year data':year_data,'preprocess':preprotime,'process':looptime,'classifier':clastime,'total':preprotime+looptime+clastime},ignore_index=True)
+res.set_index(['year data','ltp samples'], inplace=True) 
 res=res.unstack(level=0)
 
-times.set_index(['year data','ltp samples','meteo samples','components from PCA','fraction from total PCA'], inplace=True) 
+times.set_index(['year data','ltp samples'], inplace=True) 
 times=times.unstack(level=0)
 
 mean=res.mean(numeric_only=True, axis=1)
@@ -414,5 +401,5 @@ res['total accuracy']=mean
 res['accuracy variation']=var
 #res=res.sort_values(['total accuracy'], ascending=False)
 print(res)
-res.to_csv('ignore/analisisPCALDA/resultadosPCALDA3.csv')
-times.to_csv('ignore/analisisPCALDA/tiemposPCALDA3.csv')
+res.to_csv('ignore/analisisPCALDA/resultadosLDA.csv')
+times.to_csv('ignore/analisisPCALDA/tiemposLDA.csv')

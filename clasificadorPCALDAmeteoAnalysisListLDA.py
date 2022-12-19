@@ -28,9 +28,9 @@ sufix="rht"
 # lptlist=[*range(minltpitems,maxltpitems,stepltp)]
 # meteolist=[*range(minmeteoitems,maxmeteoitems,stepmeteo)]
 #Haz con LTP de [10:3:50] por ejemplo con PCA de [10:3:50] y meteo [0:1:9] Son 1000 datos más
-lptlist=[*range(10,100,3)]
-meteolist=[*range(0,10,1)]
-LDAlist=[*range(1,50,3)] 
+lptlist=[*range(1,34,1)]
+meteolist=[0]
+LDAlist=[*range(1,16,1)] 
 
 n_dias_print=5
 matplotlib.use("Agg")
@@ -414,5 +414,5 @@ res['total accuracy']=mean
 res['accuracy variation']=var
 #res=res.sort_values(['total accuracy'], ascending=False)
 print(res)
-res.to_csv('ignore/analisisPCALDA/resultadosPCALDA3.csv')
-times.to_csv('ignore/analisisPCALDA/tiemposPCALDA3.csv')
+res.to_csv('ignore/analisisPCALDA/resultadosPCALDAnoMeteo2.csv')
+times.to_csv('ignore/analisisPCALDA/tiemposPCALDAnoMeteo2.csv')
