@@ -16,5 +16,7 @@ for PCAcomp, accuracy in accuracies.groupby(level=0):
     print(accuracy)
     mask=accuracy.isnull()
     sns.heatmap(accuracy, mask=mask,cmap=sns.light_palette("#2c4978", reverse=False, as_cmap=True),annot=True,vmin=0.65,vmax=0.71)
+    plt.xlabel('Number of samples per meteorological data')
+    plt.ylabel('Number of daily ZIM probe samples')
     fig.savefig('ignore/analisisPCALDA/results PCA components '+str(PCAcomp)+'.png')
 
