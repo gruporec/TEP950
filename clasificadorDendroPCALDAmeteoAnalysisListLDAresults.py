@@ -378,16 +378,16 @@ for year_data in year_datas:
     clf.fit(Xtr,Ytr)
     # predice los valores de Yv
     Ypred=clf.predict(Xv)
-    # plotea Yv y Ypred
-    fig, ax = plt.subplots()
-    plt.plot(Ypred, color="#C22F00", marker='+')
-    plt.plot(Yv, color="#4E94EC", marker='x')
-    plt.legend(["Automatic classification","Manual classification"])
-    #plt.grid()
-    plt.xlabel('Sample number')
-    plt.ylabel('Hydric stress level')
+    # # plotea Yv y Ypred
+    # fig, ax = plt.subplots()
+    # plt.plot(Ypred, color="#C22F00", marker='+')
+    # plt.plot(Yv, color="#4E94EC", marker='x')
+    # plt.legend(["Automatic classification","Manual classification"])
+    # #plt.grid()
+    # plt.xlabel('Sample number')
+    # plt.ylabel('Hydric stress level')
     #fig.savefig('ignore/resultadosPCALDA/'+year_data+'.png')
-    plt.show()
+    #plt.show()
 
     # predice las probabilidades de Yv
     Yprob=clf.predict_proba(Xv)
