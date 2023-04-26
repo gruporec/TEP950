@@ -1,16 +1,18 @@
 import pandas as pd
 
-orig_file='ignore/resultadosTDV/PCA_LDA_results_temp_char.csv'
-res_file='ignore/resultadosTDV/PCA_LDA_results_temp_char_form.csv'
+orig_file='ignore/resultadosTDV/PCA_LDA_results_temp_char_sin_norm_estr_ant(3).csv'
+res_file='ignore/resultadosTDV/PCA_LDA_results_temp_char_sin_norm_estr_ant(3)_form.csv'
+# indices=['year_test','PCA_components','TDV_days','meteo_days','TDV_sampling','meteo_sampling']
+indices=['year_test','PCA_components','TDV_days']
 
 #carga el fichero original
 df=pd.read_csv(orig_file)
 
 #elimina entradas duplicadas
-df.drop_duplicates(inplace=True)
+#df.drop_duplicates(inplace=True)
 
 #convierte el dataframe en multiindex con los índices year_test, PCA_components, TDV_days, meteo_days, TDV_sampling y meteo_sampling
-df.set_index(['year_test','PCA_components','TDV_days','meteo_days','TDV_sampling','meteo_sampling'],inplace=True)
+df.set_index(indices,inplace=True)
 
 #elimina índices duplicados
 df=df[~df.index.duplicated(keep='first')]

@@ -15,7 +15,7 @@ import sklearn.decomposition as skdecomp
 year_train = "2014"
 years_test = ["2015","2016","2019"]
 
-res_file='ignore/resultadosTDV/PCA_LDA_results_temp.csv'
+res_file='ignore/resultadosTDV/PCA_LDA_results_temp_ref_rnd_f.csv'
 
 
 temperature = 100
@@ -115,6 +115,13 @@ for epoch in range(epochs):
                 meteo_train.index = pd.to_datetime(meteo_train.index)
                 meteo_test.index = pd.to_datetime(meteo_test.index)
 
+                #extrae la primera columna de tdv que contenga "Control"
+                tdv_train_ref = tdv_train.columns[tdv_train.columns.str.contains('Control')][0]
+                tdv_test_ref = tdv_test.columns[tdv_test.columns.str.contains('Control')][0]
+
+                #añaade la columna de referencia a meteo
+                meteo_train[tdv_train_ref] = tdv_train[tdv_train_ref]
+                meteo_test[tdv_test_ref] = tdv_test[tdv_test_ref]
 
                 #remuestrea tdv y meteo al sampling en minutos correspondiente
                 tdv_train = tdv_train.resample(str(TDV_sampling)+'T').mean()
@@ -186,7 +193,6 @@ for epoch in range(epochs):
                 meteo_prev_train = meteo_prev_train.set_index('Hora',append=True)
                 meteo_prev_test = meteo_prev_test.set_index('Hora',append=True)
 
-                #print('1')
                 #stackea las columnas de prev
                 tdv_prev_train = tdv_prev_train.stack()
                 tdv_prev_test = tdv_prev_test.stack()
@@ -295,7 +301,6 @@ for epoch in range(epochs):
                 #divide cada fila entre su desviación estándar
                 tdv_prev_train = tdv_prev_train.div(tdv_prev_train_std,axis=0)
                 tdv_prev_test = tdv_prev_test.div(tdv_prev_test_std,axis=0)
-
 
                 # crea un nuevo dataframe copiando tdv_prev
                 tdv_meteo_train = tdv_prev_train.copy()

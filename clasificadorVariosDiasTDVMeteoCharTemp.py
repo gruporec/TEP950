@@ -15,7 +15,7 @@ import sklearn.decomposition as skdecomp
 year_train = "2014"
 years_test = ["2015","2016","2019"]
 
-res_file='ignore/resultadosTDV/PCA_LDA_results_temp.csv'
+res_file='ignore/resultadosTDV/PCA_LDA_results_temp_char_sin_norm.csv'
 
 
 temperature = 100
@@ -31,7 +31,7 @@ epochs = 100
 best_PCA_components = 40
 best_TDV_days = 15
 best_meteo_days = 8
-best_TDV_sampling = 1440
+#best_TDV_sampling = 1440
 best_meteo_sampling = 1440
 
 # inicializa la mejor precisión a 0
@@ -45,7 +45,8 @@ if os.path.isfile(res_file):
     file=open(res_file,"a")
 else:
     file=open(res_file,"w")
-    file.write("year_test,PCA_components,TDV_days,meteo_days,TDV_sampling,meteo_sampling,train_score,test_score\n")
+    #file.write("year_test,PCA_components,TDV_days,meteo_days,TDV_sampling,meteo_sampling,train_score,test_score\n")
+    file.write("year_test,PCA_components,TDV_days,meteo_days,meteo_sampling,train_score,test_score\n")
 
 # Ejecuta cargaRaw.py si no existe rawDiarios.csv o rawMinutales.csv
 if not os.path.isfile("rawDiarios"+year_train+".csv") or not os.path.isfile("rawMinutales"+year_train+".csv"):
@@ -55,7 +56,7 @@ for epoch in range(epochs):
     search_PCA_components = best_PCA_components
     search_TDV_days = best_TDV_days
     search_meteo_days = best_meteo_days
-    search_TDV_sampling = best_TDV_sampling
+    #search_TDV_sampling = best_TDV_sampling
     search_meteo_sampling = best_meteo_sampling
 
     for batch_el in range(batch_size):
@@ -63,13 +64,15 @@ for epoch in range(epochs):
         PCA_components=search_PCA_components+np.random.randint(-temperature*pca_temp_scale,temperature*pca_temp_scale)
         TDV_days=search_TDV_days+np.random.randint(-temperature*days_temp_scale,temperature*days_temp_scale)
         meteo_days=search_meteo_days+np.random.randint(-temperature*days_temp_scale,temperature*days_temp_scale)
-        TDV_sampling=search_TDV_sampling+np.random.randint(-temperature*sampling_temp_scale,temperature*sampling_temp_scale)
+        #TDV_sampling=search_TDV_sampling+np.random.randint(-temperature*sampling_temp_scale,temperature*sampling_temp_scale)
         meteo_sampling=search_meteo_sampling+np.random.randint(-temperature*sampling_temp_scale,temperature*sampling_temp_scale)
 
         #si los parámetros ya se han probado, se salta esta iteración
-        if [PCA_components,TDV_days,meteo_days,TDV_sampling,meteo_sampling] in tested_params:
+        #if [PCA_components,TDV_days,meteo_days,TDV_sampling,meteo_sampling] in tested_params:
+        if [PCA_components,TDV_days,meteo_days,meteo_sampling] in tested_params:
             continue
-        tested_params.append([PCA_components,TDV_days,meteo_days,TDV_sampling,meteo_sampling])
+        #tested_params.append([PCA_components,TDV_days,meteo_days,TDV_sampling,meteo_sampling])
+        tested_params.append([PCA_components,TDV_days,meteo_days,meteo_sampling])
 
         #clamp values
         if PCA_components < 1:
@@ -78,19 +81,19 @@ for epoch in range(epochs):
             TDV_days = 1
         if meteo_days < 1:
             meteo_days = 1
-        if TDV_sampling < 1:
-            TDV_sampling = 1
+        # if TDV_sampling < 1:
+        #     TDV_sampling = 1
         if meteo_sampling < 1:
             meteo_sampling = 1
 
         # aproxima los valores de sampling a divisores enteros de 1440
         
-        if TDV_sampling > 1440:
-            TDV_sampling = 1440
+        # if TDV_sampling > 1440:
+        #     TDV_sampling = 1440
         if meteo_sampling > 1440:
             meteo_sampling = 1440
-        if TDV_sampling < 1440:
-            TDV_sampling = 1440 // (1440 // TDV_sampling)
+        # if TDV_sampling < 1440:
+        #     TDV_sampling = 1440 // (1440 // TDV_sampling)
         if meteo_sampling < 1440:
             meteo_sampling = 1440 // (1440 // meteo_sampling)
 
@@ -117,20 +120,52 @@ for epoch in range(epochs):
 
 
                 #remuestrea tdv y meteo al sampling en minutos correspondiente
-                tdv_train = tdv_train.resample(str(TDV_sampling)+'T').mean()
-                tdv_test = tdv_test.resample(str(TDV_sampling)+'T').mean()
+                # tdv_train = tdv_train.resample(str(TDV_sampling)+'T').mean()
+                # tdv_test = tdv_test.resample(str(TDV_sampling)+'T').mean()
                 meteo_train = meteo_train.resample(str(meteo_sampling)+'T').mean()
                 meteo_test = meteo_test.resample(str(meteo_sampling)+'T').mean()
 
+                #obtiene el máximo diario de tdv
+                tdv_train_max = tdv_train.groupby(tdv_train.index.date).max()
+                tdv_test_max = tdv_test.groupby(tdv_test.index.date).max()
+
+                #obtiene el minimo diario de tdv
+                tdv_train_min = tdv_train.groupby(tdv_train.index.date).min()
+                tdv_test_min = tdv_test.groupby(tdv_test.index.date).min()
+
+                #obtiene la diferencia entre el máximo y el mínimo del dia anterior
+                tdv_train_min_shift = tdv_train_min.shift(1)
+                tdv_test_min_shift = tdv_test_min.shift(1)
+                tdv_train_diff = tdv_train_max - tdv_train_min_shift
+                tdv_test_diff = tdv_test_max - tdv_test_min_shift
+
+                
+                #añade la columna Carac de valor max
+                tdv_train_max['Carac'] = 'max'
+                tdv_test_max['Carac'] = 'max'
+                #añade la columna Carac de valor min
+                tdv_train_min['Carac'] = 'min'
+                tdv_test_min['Carac'] = 'min'
+                #añade la columna Carac de valor diff
+                tdv_train_diff['Carac'] = 'diff'
+                tdv_test_diff['Carac'] = 'diff'
+
+                #crea un dataframe uniendo el max, min y diff
+                tdv_train = pd.concat([tdv_train_max,tdv_train_min,tdv_train_diff],axis=0)
+                tdv_test = pd.concat([tdv_test_max,tdv_test_min,tdv_test_diff],axis=0)
+
                 #crea columnas de fecha y hora en tdv y meteo
-                tdv_train['Fecha'] = tdv_train.index.date
-                tdv_train['Hora'] = tdv_train.index.time
+                tdv_train['Fecha'] = tdv_train.index
                 meteo_train['Fecha'] = meteo_train.index.date
-                meteo_train['Hora'] = meteo_train.index.time
-                tdv_test['Fecha'] = tdv_test.index.date
-                tdv_test['Hora'] = tdv_test.index.time
+                tdv_test['Fecha'] = tdv_test.index
                 meteo_test['Fecha'] = meteo_test.index.date
+
+                meteo_train['Hora'] = meteo_train.index.time
                 meteo_test['Hora'] = meteo_test.index.time
+
+                #convierte la columna de hora a un valor numérico de minutos teniendo en cuenta que es un objeto datetime.time
+                meteo_train['Hora'] = meteo_train['Hora'].apply(lambda x: x.hour*60 + x.minute)
+                meteo_test['Hora'] = meteo_test['Hora'].apply(lambda x: x.hour*60 + x.minute)
 
                 #convierte el índice de data a fecha
                 data_train.index = pd.to_datetime(data_train.index)
@@ -144,12 +179,6 @@ for epoch in range(epochs):
                 meteo_train = meteo_train.set_index('Fecha')
                 meteo_test = meteo_test.set_index('Fecha')
 
-                #convierte la columna de hora a un valor numérico de minutos teniendo en cuenta que es un objeto datetime.time
-                tdv_train['Hora'] = tdv_train['Hora'].apply(lambda x: x.hour*60 + x.minute)
-                tdv_test['Hora'] = tdv_test['Hora'].apply(lambda x: x.hour*60 + x.minute)
-                meteo_train['Hora'] = meteo_train['Hora'].apply(lambda x: x.hour*60 + x.minute)
-                meteo_test['Hora'] = meteo_test['Hora'].apply(lambda x: x.hour*60 + x.minute)
-
                 #copia tdv y meteo en un dataframe nuevo al que añadir los datos de dias anteriores
                 tdv_prev_train = tdv_train.copy()
                 meteo_prev_train = meteo_train.copy()
@@ -160,9 +189,9 @@ for epoch in range(epochs):
                     #copia tdv en un dataframe temporal
                     tdv_temp_train = tdv_train.copy()
                     tdv_temp_test = tdv_test.copy()
-                    #resta 24*i horas al valor de la columna hora
-                    tdv_temp_train['Hora'] = tdv_temp_train['Hora'] - 24*60*i
-                    tdv_temp_test['Hora'] = tdv_temp_test['Hora'] - 24*60*i
+                    #añade i a la columna Carac
+                    tdv_temp_train['Carac'] = tdv_temp_train['Carac'] + str(i)
+                    tdv_temp_test['Carac'] = tdv_temp_test['Carac'] + str(i)
                     #añade i días al índice
                     tdv_temp_train.index = tdv_temp_train.index + pd.Timedelta(days=i)
                     tdv_temp_test.index = tdv_temp_test.index + pd.Timedelta(days=i)
@@ -180,11 +209,15 @@ for epoch in range(epochs):
                     meteo_prev_train = meteo_prev_train.append(meteo_temp_train)
                     meteo_prev_test = meteo_prev_test.append(meteo_temp_test)
 
-                #añade la columna hora al índice en un segundo nivel
-                tdv_prev_train = tdv_prev_train.set_index('Hora',append=True)
-                tdv_prev_test = tdv_prev_test.set_index('Hora',append=True)
-                meteo_prev_train = meteo_prev_train.set_index('Hora',append=True)
-                meteo_prev_test = meteo_prev_test.set_index('Hora',append=True)
+                #renombra hora a carac
+                meteo_prev_train = meteo_prev_train.rename(columns={'Hora':'Carac'})
+                meteo_prev_test = meteo_prev_test.rename(columns={'Hora':'Carac'})
+
+                #añade la columna Carac al índice en un segundo nivel
+                tdv_prev_train = tdv_prev_train.set_index('Carac',append=True)
+                tdv_prev_test = tdv_prev_test.set_index('Carac',append=True)
+                meteo_prev_train = meteo_prev_train.set_index('Carac',append=True)
+                meteo_prev_test = meteo_prev_test.set_index('Carac',append=True)
 
                 #print('1')
                 #stackea las columnas de prev
@@ -193,11 +226,11 @@ for epoch in range(epochs):
                 meteo_prev_train = meteo_prev_train.stack()
                 meteo_prev_test = meteo_prev_test.stack()
 
-                #unstackea la columna de hora
-                tdv_prev_train = tdv_prev_train.unstack('Hora')
-                tdv_prev_test = tdv_prev_test.unstack('Hora')
-                meteo_prev_train = meteo_prev_train.unstack('Hora')
-                meteo_prev_test = meteo_prev_test.unstack('Hora')
+                #unstackea la columna de Carac
+                tdv_prev_train = tdv_prev_train.unstack('Carac')
+                tdv_prev_test = tdv_prev_test.unstack('Carac')
+                meteo_prev_train = meteo_prev_train.unstack('Carac')
+                meteo_prev_test = meteo_prev_test.unstack('Carac')
 
                 #print('2')
 
@@ -278,23 +311,23 @@ for epoch in range(epochs):
 
                 #print('5')
 
-                #calcula la media de cada fila de tdv_prev
-                tdv_prev_train_mean = tdv_prev_train.mean(axis=1)
-                tdv_prev_test_mean = tdv_prev_test.mean(axis=1)
+                # #calcula la media de cada fila de tdv_prev
+                # tdv_prev_train_mean = tdv_prev_train.mean(axis=1)
+                # tdv_prev_test_mean = tdv_prev_test.mean(axis=1)
 
-                #calcula la desviación estándar de cada fila de tdv_prev
-                tdv_prev_train_std = tdv_prev_train.std(axis=1)
-                tdv_prev_test_std = tdv_prev_test.std(axis=1)
+                # #calcula la desviación estándar de cada fila de tdv_prev
+                # tdv_prev_train_std = tdv_prev_train.std(axis=1)
+                # tdv_prev_test_std = tdv_prev_test.std(axis=1)
 
-                #print('6')
+                # #print('6')
 
-                #resta a cada fila su media
-                tdv_prev_train = tdv_prev_train.sub(tdv_prev_train_mean,axis=0)
-                tdv_prev_test = tdv_prev_test.sub(tdv_prev_test_mean,axis=0)
+                # #resta a cada fila su media
+                # tdv_prev_train = tdv_prev_train.sub(tdv_prev_train_mean,axis=0)
+                # tdv_prev_test = tdv_prev_test.sub(tdv_prev_test_mean,axis=0)
 
-                #divide cada fila entre su desviación estándar
-                tdv_prev_train = tdv_prev_train.div(tdv_prev_train_std,axis=0)
-                tdv_prev_test = tdv_prev_test.div(tdv_prev_test_std,axis=0)
+                # #divide cada fila entre su desviación estándar
+                # tdv_prev_train = tdv_prev_train.div(tdv_prev_train_std,axis=0)
+                # tdv_prev_test = tdv_prev_test.div(tdv_prev_test_std,axis=0)
 
 
                 # crea un nuevo dataframe copiando tdv_prev
@@ -368,18 +401,18 @@ for epoch in range(epochs):
                 avg_accuracy=avg_accuracy+accuracy_test
 
                 #añade los resultados al archivo csv
-                file.write(str(year_test) + ',' + str(PCA_components) + ',' + str(TDV_days) + ',' + str(meteo_days) + ',' + str(TDV_sampling) + ',' + str(meteo_sampling) + ',' + str(accuracy_train) + ',' + str(accuracy_test) + '\n')
+                file.write(str(year_test) + ',' + str(PCA_components) + ',' + str(TDV_days) + ',' + str(meteo_days) + ',' + str(meteo_sampling) + ',' + str(accuracy_train) + ',' + str(accuracy_test) + '\n')
                 file.flush()
             #si hay una excepción por teclado, sale de los bucles
         except KeyboardInterrupt:
             file.close()
             traceback.print_exc()
-            print('PCA_components: ' + str(PCA_components), 'TDV_days: ' + str(TDV_days), 'meteo_days: ' + str(meteo_days), 'TDV_sampling: ' + str(TDV_sampling), 'meteo_sampling: ' + str(meteo_sampling))
+            print('PCA_components: ' + str(PCA_components), 'TDV_days: ' + str(TDV_days), 'meteo_days: ' + str(meteo_days), 'meteo_sampling: ' + str(meteo_sampling))
             sys.exit()
         #si hay cualquier otra excepción, la imprime en consola y sigue
         except:
             traceback.print_exc()
-            print('PCA_components: ' + str(PCA_components), 'TDV_days: ' + str(TDV_days), 'meteo_days: ' + str(meteo_days), 'TDV_sampling: ' + str(TDV_sampling), 'meteo_sampling: ' + str(meteo_sampling))
+            print('PCA_components: ' + str(PCA_components), 'TDV_days: ' + str(TDV_days), 'meteo_days: ' + str(meteo_days), 'meteo_sampling: ' + str(meteo_sampling))
             continue
         avg_accuracy=avg_accuracy/len(years_test)
         if avg_accuracy>best_accuracy:
@@ -387,7 +420,7 @@ for epoch in range(epochs):
             best_PCA_components=PCA_components
             best_TDV_days=TDV_days
             best_meteo_days=meteo_days
-            best_TDV_sampling=TDV_sampling
+            # best_TDV_sampling=TDV_sampling
             best_meteo_sampling=meteo_sampling
             print('best accuracy: ' + str(best_accuracy))
     temperature=temperature-(temperature*temp_step_scale/epochs)
