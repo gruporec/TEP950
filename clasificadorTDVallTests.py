@@ -42,7 +42,8 @@ def normalize_df(df):
 
 #define una función para procesar cada elemento de un batch
 def process_el(args):
-    (PCA_components,TDV_days,years_test,year_train)=args
+    (PCA_components,TDV_days,years_test,year_train,chars,tdv_train_orig,data_train_orig,tdv_tests_orig,data_tests_orig)=args
+
     avg_accuracy = 0
     #meteo_days=search_meteo_days+np.random.randint(-temperature*days_temp_scale,temperature*days_temp_scale)
     #TDV_sampling=search_TDV_sampling+np.random.randint(-temperature*sampling_temp_scale,temperature*sampling_temp_scale)
@@ -80,13 +81,23 @@ def process_el(args):
     #     meteo_sampling = 1440 // (1440 // meteo_sampling)
 
     try:
-        for year_test in years_test:
-            if not os.path.isfile("rawDiarios"+year_test+".csv") or not os.path.isfile("rawMinutales"+year_test+".csv"):
-                os.system("python3 cargaRaw.py")
-    
-            # Carga de datos
-            tdv_train,ltp_train,meteo_train,data_train=isl.cargaDatosTDV(year_train,"rht")
-            tdv_test,ltp_test,meteo_test,data_test=isl.cargaDatosTDV(year_test,"rht")
+        #por cada elemento en years_test
+        for yt in range(len(years_test)):
+            #recarga los datos de entrenamiento y test
+            tdv_train = tdv_train_orig.copy()
+            data_train = data_train_orig.copy()
+
+            year_test = years_test[yt]
+            tdv_test = tdv_tests_orig[yt].copy()
+            data_test = data_tests_orig[yt].copy()
+
+            #pasa los índices a datetime
+            tdv_train.index = pd.to_datetime(tdv_train.index)
+            tdv_test.index = pd.to_datetime(tdv_test.index)
+            data_train.index = pd.to_datetime(data_train.index)
+            data_test.index = pd.to_datetime(data_test.index)
+
+
 
             #elimina los datos nan de tdv y meteo
             tdv_train = tdv_train.dropna()
@@ -197,8 +208,11 @@ def process_el(args):
             tdv_prev_train_max = tdv_prev_train_max.unstack(level='Carac')
             tdv_prev_test_max = tdv_prev_test_max.unstack(level='Carac')
             #normaliza los datos
-            tdv_prev_train_max = normalize_df(tdv_prev_train_max)
-            tdv_prev_test_max = normalize_df(tdv_prev_test_max)
+            tdv_prev_train_max_norm = normalize_df(tdv_prev_train_max)
+            tdv_prev_test_max_norm = normalize_df(tdv_prev_test_max)
+            #añade al segundo nivel de columnas el sufijo _norm
+            tdv_prev_train_max_norm.columns = tdv_prev_train_max_norm.columns.set_levels([tdv_prev_train_max_norm.columns.levels[0], tdv_prev_train_max_norm.columns.levels[1]+'_norm'])
+            tdv_prev_test_max_norm.columns = tdv_prev_test_max_norm.columns.set_levels([tdv_prev_test_max_norm.columns.levels[0], tdv_prev_test_max_norm.columns.levels[1]+'_norm'])
 
             #obtiene los datos de dias anteriores de min usando la función get_prev_days
             tdv_prev_train_min = get_prev_days(tdv_train_min,TDV_days)
@@ -210,8 +224,11 @@ def process_el(args):
             tdv_prev_train_min = tdv_prev_train_min.unstack(level='Carac')
             tdv_prev_test_min = tdv_prev_test_min.unstack(level='Carac')
             #normaliza los datos
-            tdv_prev_train_min = normalize_df(tdv_prev_train_min)
-            tdv_prev_test_min = normalize_df(tdv_prev_test_min)
+            tdv_prev_train_min_norm = normalize_df(tdv_prev_train_min)
+            tdv_prev_test_min_norm = normalize_df(tdv_prev_test_min)
+            #añade al segundo nivel de columnas el sufijo _norm
+            tdv_prev_train_min_norm.columns = tdv_prev_train_min_norm.columns.set_levels([tdv_prev_train_min_norm.columns.levels[0], tdv_prev_train_min_norm.columns.levels[1]+'_norm'])
+            tdv_prev_test_min_norm.columns = tdv_prev_test_min_norm.columns.set_levels([tdv_prev_test_min_norm.columns.levels[0], tdv_prev_test_min_norm.columns.levels[1]+'_norm'])
 
             #obtiene los datos de dias anteriores de diff usando la función get_prev_days
             tdv_prev_train_diff = get_prev_days(tdv_train_diff,TDV_days)
@@ -223,8 +240,11 @@ def process_el(args):
             tdv_prev_train_diff = tdv_prev_train_diff.unstack(level='Carac')
             tdv_prev_test_diff = tdv_prev_test_diff.unstack(level='Carac')
             #normaliza los datos
-            tdv_prev_train_diff = normalize_df(tdv_prev_train_diff)
-            tdv_prev_test_diff = normalize_df(tdv_prev_test_diff)
+            tdv_prev_train_diff_norm = normalize_df(tdv_prev_train_diff)
+            tdv_prev_test_diff_norm = normalize_df(tdv_prev_test_diff)
+            #añade al segundo nivel de columnas el sufijo _norm
+            tdv_prev_train_diff_norm.columns = tdv_prev_train_diff_norm.columns.set_levels([tdv_prev_train_diff_norm.columns.levels[0], tdv_prev_train_diff_norm.columns.levels[1]+'_norm'])
+            tdv_prev_test_diff_norm.columns = tdv_prev_test_diff_norm.columns.set_levels([tdv_prev_test_diff_norm.columns.levels[0], tdv_prev_test_diff_norm.columns.levels[1]+'_norm'])
 
             #obtiene los datos de dias anteriores de inc usando la función get_prev_days
             tdv_prev_train_inc = get_prev_days(tdv_train_inc,TDV_days)
@@ -236,12 +256,75 @@ def process_el(args):
             tdv_prev_train_inc = tdv_prev_train_inc.unstack(level='Carac')
             tdv_prev_test_inc = tdv_prev_test_inc.unstack(level='Carac')
             #normaliza los datos
-            tdv_prev_train_inc = normalize_df(tdv_prev_train_inc)
-            tdv_prev_test_inc = normalize_df(tdv_prev_test_inc)
+            tdv_prev_train_inc_norm = normalize_df(tdv_prev_train_inc)
+            tdv_prev_test_inc_norm = normalize_df(tdv_prev_test_inc)
+            #añade al segundo nivel de columnas el sufijo _norm
+            tdv_prev_train_inc_norm.columns = tdv_prev_train_inc_norm.columns.set_levels([tdv_prev_train_inc_norm.columns.levels[0], tdv_prev_train_inc_norm.columns.levels[1]+'_norm'])
+            tdv_prev_test_inc_norm.columns = tdv_prev_test_inc_norm.columns.set_levels([tdv_prev_test_inc_norm.columns.levels[0], tdv_prev_test_inc_norm.columns.levels[1]+'_norm'])
 
-            # crea tdv_prev con los datos normalizados
-            tdv_prev_train=pd.concat([tdv_prev_train_max,tdv_prev_train_min,tdv_prev_train_diff,tdv_prev_train_inc],axis=1)
-            tdv_prev_test=pd.concat([tdv_prev_test_max,tdv_prev_test_min,tdv_prev_test_diff,tdv_prev_test_inc],axis=1)
+            #obtiene los datos de dias anteriores del estrés usando la función get_prev_days
+            data_train_shift_prev = get_prev_days(data_train_shift,TDV_days)
+            data_test_shift_prev = get_prev_days(data_test_shift,TDV_days)
+            #añade la columna carac al indice en un nivel superior
+            data_train_shift_prev = data_train_shift_prev.set_index('Carac',append=True)
+            data_test_shift_prev = data_test_shift_prev.set_index('Carac',append=True)
+            #unstack para que los valores de carac se conviertan en columnas
+            data_train_shift_prev = data_train_shift_prev.unstack(level='Carac')
+            data_test_shift_prev = data_test_shift_prev.unstack(level='Carac')
+
+
+            # crea tdv_prev con los datos normalizados y sin normalizar, añadiendo los que correspondan según chars
+            # crea los dataframes de train y test vacíos
+            tdv_prev_train = pd.DataFrame()
+            tdv_prev_test = pd.DataFrame()
+            # chars='tdv_prev_max','tdv_prev_min','tdv_prev_diff','tdv_prev_inc','tdv_prev_max_norm','tdv_prev_min_norm','tdv_prev_diff_norm','tdv_prev_inc_norm','stress'
+            # añade prev_max si el primer elemento de chars es True
+            if chars[0]:
+                tdv_prev_train = pd.concat([tdv_prev_train,tdv_prev_train_max],axis=1)
+                tdv_prev_test = pd.concat([tdv_prev_test,tdv_prev_test_max],axis=1)
+
+            # añade prev_min si el segundo elemento de chars es True
+            if chars[1]:
+                tdv_prev_train = pd.concat([tdv_prev_train,tdv_prev_train_min],axis=1)
+                tdv_prev_test = pd.concat([tdv_prev_test,tdv_prev_test_min],axis=1)
+
+            # añade prev_diff si el tercer elemento de chars es True
+            if chars[2]:
+                tdv_prev_train = pd.concat([tdv_prev_train,tdv_prev_train_diff],axis=1)
+                tdv_prev_test = pd.concat([tdv_prev_test,tdv_prev_test_diff],axis=1)
+
+            # añade prev_inc si el cuarto elemento de chars es True
+            if chars[3]:
+                tdv_prev_train = pd.concat([tdv_prev_train,tdv_prev_train_inc],axis=1)
+                tdv_prev_test = pd.concat([tdv_prev_test,tdv_prev_test_inc],axis=1)
+
+            # añade prev_max_norm si el quinto elemento de chars es True
+            if chars[4]:
+                tdv_prev_train = pd.concat([tdv_prev_train,tdv_prev_train_max_norm],axis=1)
+                tdv_prev_test = pd.concat([tdv_prev_test,tdv_prev_test_max_norm],axis=1)
+            
+            # añade prev_min_norm si el sexto elemento de chars es True
+            if chars[5]:
+                tdv_prev_train = pd.concat([tdv_prev_train,tdv_prev_train_min_norm],axis=1)
+                tdv_prev_test = pd.concat([tdv_prev_test,tdv_prev_test_min_norm],axis=1)
+
+            # añade prev_diff_norm si el séptimo elemento de chars es True
+            if chars[6]:
+                tdv_prev_train = pd.concat([tdv_prev_train,tdv_prev_train_diff_norm],axis=1)
+                tdv_prev_test = pd.concat([tdv_prev_test,tdv_prev_test_diff_norm],axis=1)
+
+            # añade prev_inc_norm si el octavo elemento de chars es True
+            if chars[7]:
+                tdv_prev_train = pd.concat([tdv_prev_train,tdv_prev_train_inc_norm],axis=1)
+                tdv_prev_test = pd.concat([tdv_prev_test,tdv_prev_test_inc_norm],axis=1)
+
+            # añade stress si el noveno elemento de chars es True
+            if chars[8]:
+                tdv_prev_train = pd.concat([tdv_prev_train,data_train_shift_prev],axis=1)
+                tdv_prev_test = pd.concat([tdv_prev_test,data_test_shift_prev],axis=1)
+
+            # tdv_prev_train = pd.concat([tdv_prev_train_max,tdv_prev_train_min,tdv_prev_train_diff,tdv_prev_train_inc,tdv_prev_train_max_norm,tdv_prev_train_min_norm,tdv_prev_train_diff_norm,tdv_prev_train_inc_norm,data_train_shift],axis=1)
+            # tdv_prev_test = pd.concat([tdv_prev_test_max,tdv_prev_test_min,tdv_prev_test_diff,tdv_prev_test_inc,tdv_prev_test_max_norm,tdv_prev_test_min_norm,tdv_prev_test_diff_norm,tdv_prev_test_inc_norm,data_test_shift],axis=1)
 
             #stackea el primer nivel de columnas
             tdv_prev_train = tdv_prev_train.stack(0)
@@ -250,8 +333,6 @@ def process_el(args):
             #stackea las columnas de data
             data_train = data_train.stack()
             data_test = data_test.stack()
-
-            #print('3')
 
             #elimina todos los valores nan de tdv_prev y meteo_prev
             tdv_prev_train = tdv_prev_train.dropna(how='any')
@@ -265,18 +346,27 @@ def process_el(args):
             data_test = data_test[data_test.index.isin(tdv_prev_test.index)]
             #data_test = data_test[data_test.index.isin(meteo_prev_test.index)]
 
-            #print('4')
             #elimina los valores de tdv_prev que no estén en data o meteo_prev
             tdv_prev_train = tdv_prev_train[tdv_prev_train.index.isin(data_train.index)]
             #tdv_prev_train = tdv_prev_train[tdv_prev_train.index.isin(meteo_prev_train.index)]
             tdv_prev_test = tdv_prev_test[tdv_prev_test.index.isin(data_test.index)]
             #tdv_prev_test = tdv_prev_test[tdv_prev_test.index.isin(meteo_prev_test.index)]
 
+            
+            # si como resultado sólo se obtiene una serie, la convierte en dataframe
+            if isinstance(tdv_prev_train,pd.Series):
+                tdv_prev_train = pd.DataFrame(tdv_prev_train)
+                tdv_prev_test = pd.DataFrame(tdv_prev_test)
 
             #añade a tdv un nivel de columnas y lo rellena con "TDV"
             tdv_prev_train.columns = pd.MultiIndex.from_product([tdv_prev_train.columns, ['TDV']])
             tdv_prev_test.columns = pd.MultiIndex.from_product([tdv_prev_test.columns, ['TDV']])
 
+            
+            # si como resultado sólo se obtiene una serie, la convierte en dataframe
+            if isinstance(tdv_prev_train,pd.Series):
+                tdv_prev_train = pd.DataFrame(tdv_prev_train)
+                tdv_prev_test = pd.DataFrame(tdv_prev_test)
             #unstackea el segundo nivel del índice de tdv
             tdv_prev_train = tdv_prev_train.unstack(1)
             tdv_prev_test = tdv_prev_test.unstack(1)
@@ -364,94 +454,154 @@ if __name__=='__main__':
     year_train = "2014"
     years_test = ["2015","2016","2019"]
 
-    res_file_target='ignore/resultadosTDV/batch/test'
-    # comprueba si el fichero de resultados existe. Si existe, modifica el nombre para no sobreescribirlo utilizando un contador hasta encontrar un nombre que no exista
-    i=0
-    res_file=res_file_target+'.csv'
-    while os.path.isfile(res_file):
-        i+=1
-        res_file=res_file_target+'('+str(i)+').csv'
+    meta_file='ignore/resultadosTDV/batch/meta.csv'
+    # comprueba si el fichero meta existe. Si no existe, lo crea, añadiendo la cabecera
+    if not os.path.isfile(meta_file):
+        m_file=open(meta_file,'w')
+        m_file.write('ID, best acc\n')
+        m_file.close()
+
+    # carga el archivo de tests en un dataframe
+    tests = pd.read_csv('ignore/resultadosTDV/batch/programmedTests.csv')
+    # asigna la primera columna como índice
+    tests.set_index('ID',inplace=True)
+    # convierte el contenido de tests en booleano
+    tests = tests.astype(bool)
+    # por cada fila del dataframe
+    for index, row in tests.iterrows():
+        if row['done']==False:
+            # convierte row en una tupla
+            row = tuple(row)
+
+            res_file_target='ignore/resultadosTDV/batch/'+str(index)
+            # comprueba si el fichero de resultados existe. Si existe, modifica el nombre para no sobreescribirlo utilizando un contador hasta encontrar un nombre que no exista
+            i=0
+            res_file=res_file_target+'.csv'
+            while os.path.isfile(res_file):
+                i+=1
+                res_file=res_file_target+'('+str(i)+').csv'
+            
+            temperature = 200
+            pca_temp_scale = 1
+            days_temp_scale = 0.21
+            sampling_temp_scale = 10
+
+            temp_step_scale = 2.5
+            batch_size = 10 # 20 es demasiado para 400 epochs (2% en más de 12 horas). 200 de temperatura puede estar bien; revisar. No parece que los resultados mejoren mucho.
+            epochs = 100
+
+            # valores iniciales de los parámetros
+            best_PCA_components = 40
+            best_TDV_days = 15
+            #best_meteo_days = 8
+            #best_TDV_sampling = 1440
+            #best_meteo_sampling = 1440
+
+            # inicializa la mejor precisión a 0
+            best_accuracy = 0
+
+            # lista de parámetros que ya se han probado
+            tested_params = []
+
+            #abre el fichero de resultados para añadir los nuevos resultados
+            if os.path.isfile(res_file):
+                file=open(res_file,"a")
+            else:
+                file=open(res_file,"w")
+                #file.write("year_test,PCA_components,TDV_days,meteo_days,TDV_sampling,meteo_sampling,train_score,test_score\n")
+                # file.write("year_test,PCA_components,TDV_days,meteo_days,meteo_sampling,train_score,test_score\n")
+                file.write("PCA_components,TDV_days,test_score\n")
+
+            # Ejecuta cargaRaw.py si no existe rawDiarios.csv o rawMinutales.csv
+            if not os.path.isfile("rawDiarios"+year_train+".csv") or not os.path.isfile("rawMinutales"+year_train+".csv"):
+                os.system("python3 cargaRaw.py")
+    
+            # Carga de datos
+            tdv_train,ltp_train,meteo_train,data_train=isl.cargaDatosTDV(year_train,"rht")
+
+            #crea dos listas vacías para los datos de test
+            tdv_tests=[]
+            data_tests=[]
+            #por cada año de test
+            for year_test in years_test:
+                if not os.path.isfile("rawDiarios"+year_test+".csv") or not os.path.isfile("rawMinutales"+year_test+".csv"):
+                    os.system("python3 cargaRaw.py")
+                #carga los datos de test
+                tdv_test,ltp_test,meteo_test,data_test=isl.cargaDatosTDV(year_test,"rht")
+                #añade los datos de test a las listas
+                tdv_tests.append(tdv_test.copy())
+                data_tests.append(data_test.copy())
 
 
-    temperature = 200
-    pca_temp_scale = 1
-    days_temp_scale = 0.21
-    sampling_temp_scale = 10
 
-    temp_step_scale = 2.5
-    batch_size = 10 # 20 es demasiado para 400 epochs (2% en más de 12 horas). 200 de temperatura puede estar bien; revisar. No parece que los resultados mejoren mucho.
-    epochs = 100
+            for epoch in range(epochs):
+                search_PCA_components = best_PCA_components
+                search_TDV_days = best_TDV_days
+                #search_meteo_days = best_meteo_days
+                #search_TDV_sampling = best_TDV_sampling
+                #search_meteo_sampling = best_meteo_sampling
 
-    # valores iniciales de los parámetros
-    best_PCA_components = 40
-    best_TDV_days = 15
-    #best_meteo_days = 8
-    #best_TDV_sampling = 1440
-    #best_meteo_sampling = 1440
+                #lanza un proceso para cada elemento del batch
 
-    # inicializa la mejor precisión a 0
-    best_accuracy = 0
+                #crea una lista con los inputs de cada proceso
+                inputs = []
+                for batch_el in range(batch_size):
+                    PCA_components=search_PCA_components+np.random.randint(-temperature*pca_temp_scale,temperature*pca_temp_scale)
+                    TDV_days=search_TDV_days+np.random.randint(-temperature*days_temp_scale,temperature*days_temp_scale)
+                    inputs.append((PCA_components,TDV_days,years_test,year_train,row,tdv_train.copy(), data_train.copy(), tdv_tests.copy(), data_tests.copy()))
 
-    # lista de parámetros que ya se han probado
-    tested_params = []
-
-    #abre el fichero de resultados para añadir los nuevos resultados
-    if os.path.isfile(res_file):
-        file=open(res_file,"a")
-    else:
-        file=open(res_file,"w")
-        #file.write("year_test,PCA_components,TDV_days,meteo_days,TDV_sampling,meteo_sampling,train_score,test_score\n")
-        # file.write("year_test,PCA_components,TDV_days,meteo_days,meteo_sampling,train_score,test_score\n")
-        file.write("PCA_components,TDV_days,test_score\n")
-
-    # Ejecuta cargaRaw.py si no existe rawDiarios.csv o rawMinutales.csv
-    if not os.path.isfile("rawDiarios"+year_train+".csv") or not os.path.isfile("rawMinutales"+year_train+".csv"):
-        os.system("python3 cargaRaw.py")
+                #por cada elemento de la lista de inputs
+                tested_already=[]
+                for i in range(len(inputs)):
+                    #separa los dos primeros elementos de la tupla
+                    PCA_components,TDV_days = inputs[i][:2]
+                    #si los parámetros no se han probado ya
+                    if (PCA_components,TDV_days) not in tested_params:
+                        #añade los parámetros a la lista de parámetros probados
+                        tested_params.append((PCA_components,TDV_days))
+                    else:
+                        #almacena el índice del elemento que ya se ha probado
+                        tested_already.append(i)
+                #elimina los elementos que ya se han probado
+                for i in range(len(tested_already)):
+                    inputs.pop(tested_already[i]-i)
 
 
+                #crea una pool de procesos
+                pool = mp.Pool(processes=batch_size)
 
-    for epoch in range(epochs):
-        search_PCA_components = best_PCA_components
-        search_TDV_days = best_TDV_days
-        #search_meteo_days = best_meteo_days
-        #search_TDV_sampling = best_TDV_sampling
-        #search_meteo_sampling = best_meteo_sampling
+                #lanza los procesos
+                results = pool.map(process_el,inputs)
 
-        #lanza un proceso para cada elemento del batch
+                #cierra la pool
+                pool.close()
 
-        #crea una lista con los inputs de cada proceso
-        inputs = []
-        for batch_el in range(batch_size):
-            PCA_components=search_PCA_components+np.random.randint(-temperature*pca_temp_scale,temperature*pca_temp_scale)
-            TDV_days=search_TDV_days+np.random.randint(-temperature*days_temp_scale,temperature*days_temp_scale)
-            inputs.append((PCA_components,TDV_days,years_test,year_train))
-        
-        #crea una pool de procesos
-        pool = mp.Pool(processes=batch_size)
-
-        #lanza los procesos
-        results = pool.map(process_el,inputs)
-
-        #cierra la pool
-        pool.close()
-
-        #comprueba si alguno de los resultados es mejor que el actual y obtiene los parámetros de entrada asociados
-        for i in range(len(results)):
-            if results[i][0]==None:
-                results[i][0]=0
-            if results[i][0]>best_accuracy:
-                #(avg_accuracy,PCA_components,TDV_days,years_test,year_train)
-                best_accuracy=results[i][0]
-                best_PCA_components=results[i][1]
-                best_TDV_days=results[i][2]
-                #best_meteo_days=inputs[i][2]
-                #best_TDV_sampling=inputs[i][3]
-                #best_meteo_sampling=inputs[i][4]
-                print('best accuracy: ',best_accuracy)
-        temperature=temperature-(temperature*temp_step_scale/epochs)
-        print(epoch/epochs*100,'% done, temperature: ',temperature)
-        #guarda los parámetros de entrada y el resultado en el fichero de resultados
-        for i in range(len(results)):
-            file.write(str(results[i][1]) + ',' + str(results[i][2]) + ',' + str(results[i][0]) + '\n')
-            file.flush()
-    file.close()
+                #comprueba si alguno de los resultados es mejor que el actual y obtiene los parámetros de entrada asociados
+                for i in range(len(results)):
+                    if results[i][0]==None:
+                        results[i][0]=0
+                    if results[i][0]>best_accuracy:
+                        #(avg_accuracy,PCA_components,TDV_days,years_test,year_train)
+                        best_accuracy=results[i][0]
+                        best_PCA_components=results[i][1]
+                        best_TDV_days=results[i][2]
+                        #best_meteo_days=inputs[i][2]
+                        #best_TDV_sampling=inputs[i][3]
+                        #best_meteo_sampling=inputs[i][4]
+                        print('best accuracy: ',best_accuracy)
+                temperature=temperature-(temperature*temp_step_scale/epochs)
+                #print(epoch/epochs*100,'% done, temperature: ',temperature)
+                #guarda los parámetros de entrada y el resultado en el fichero de resultados
+                for i in range(len(results)):
+                    file.write(str(results[i][1]) + ',' + str(results[i][2]) + ',' + str(results[i][0]) + '\n')
+                    file.flush()
+            #cierra el fichero de resultados
+            file.close()
+            #añade el resultado al fichero meta
+            m_file=open(meta_file,'a')
+            m_file.write(str(index)+','+str(best_accuracy)+'\n')
+            m_file.close()
+            #marca el test como hecho
+            tests.at[index,'done'] = True
+            tests.to_csv('ignore/resultadosTDV/batch/programmedTests.csv',index=True)
+            print('test ',index,' done; best accuracy: ',best_accuracy)
