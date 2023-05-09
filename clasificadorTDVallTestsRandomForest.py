@@ -661,72 +661,71 @@ if __name__=='__main__':
 
 
 
-            for epoch in range(epochs):
-                search_TreeCount = best_TreeCount
-                search_TDV_days = best_TDV_days
-                #search_meteo_days = best_meteo_days
-                #search_TDV_sampling = best_TDV_sampling
-                #search_meteo_sampling = best_meteo_sampling
+            search_TreeCount = 100
+            search_TDV_days = best_TDV_days
+            #search_meteo_days = best_meteo_days
+            #search_TDV_sampling = best_TDV_sampling
+            #search_meteo_sampling = best_meteo_sampling
 
-                #lanza un proceso para cada elemento del batch
+            #lanza un proceso para cada elemento del batch
 
-                #crea una lista con los inputs de cada proceso
-                inputs = []
+            #crea una lista con los inputs de cada proceso
+            inputs = []
 
-                #cuenta el número de elementos de row que son true
-                num_params = sum(row)
-                
-                for batch_el in range(batch_size):
-                    TDV_days=search_TDV_days+np.random.randint(max(-temperature*days_temp_scale,-search_TDV_days+1),min(temperature*days_temp_scale,max_days-search_TDV_days))
-                    #TreeCount=search_TreeCount+np.random.randint(max(-temperature*pca_temp_scale,1-search_TreeCount),temperature*pca_temp_scale)
-                    TreeCount=100
-                    inputs.append((TreeCount,TDV_days,years_test,year_train,row,tdv_train.copy(), data_train.copy(), tdv_tests.copy(), data_tests.copy()))
+            #cuenta el número de elementos de row que son true
+            num_params = sum(row)
+            
+            for TDV_days in range(1,21):
+                #TDV_days=search_TDV_days+np.random.randint(max(-temperature*days_temp_scale,-search_TDV_days+1),min(temperature*days_temp_scale,max_days-search_TDV_days))
+                #TreeCount=search_TreeCount+np.random.randint(max(-temperature*pca_temp_scale,1-search_TreeCount),temperature*pca_temp_scale)
+                TreeCount=100
+                inputs.append((TreeCount,TDV_days,years_test,year_train,row,tdv_train.copy(), data_train.copy(), tdv_tests.copy(), data_tests.copy()))
 
-                #por cada elemento de la lista de inputs
-                tested_already=[]
-                for i in range(len(inputs)):
-                    #separa los dos primeros elementos de la tupla
-                    TreeCount,TDV_days = inputs[i][:2]
-                    #si los parámetros no se han probado ya
-                    if (TreeCount,TDV_days) not in tested_params:
-                        #añade los parámetros a la lista de parámetros probados
-                        tested_params.append((TreeCount,TDV_days))
-                    else:
-                        #almacena el índice del elemento que ya se ha probado
-                        tested_already.append(i)
-                #elimina los elementos que ya se han probado
-                for i in range(len(tested_already)):
-                    inputs.pop(tested_already[i]-i)
+            # #por cada elemento de la lista de inputs
+            # tested_already=[]
+            # for i in range(len(inputs)):
+            #     #separa los dos primeros elementos de la tupla
+            #     TreeCount,TDV_days = inputs[i][:2]
+            #     #si los parámetros no se han probado ya
+            #     if (TreeCount,TDV_days) not in tested_params:
+            #         #añade los parámetros a la lista de parámetros probados
+            #         tested_params.append((TreeCount,TDV_days))
+            #     else:
+            #         #almacena el índice del elemento que ya se ha probado
+            #         tested_already.append(i)
+            # #elimina los elementos que ya se han probado
+            # for i in range(len(tested_already)):
+            #     inputs.pop(tested_already[i]-i)
 
-                
-                #crea una pool de procesos
-                pool = mp.Pool(processes=batch_size)
+            
+            #crea una pool de procesos
+            pool = mp.Pool(processes=20)
 
-                #lanza los procesos
-                results = pool.map(process_el,inputs)
+            #lanza los procesos
+            results = pool.map(process_el,inputs)
 
-                #cierra la pool
-                pool.close()
+            #cierra la pool
+            pool.close()
 
-                #comprueba si alguno de los resultados es mejor que el actual y obtiene los parámetros de entrada asociados
-                for i in range(len(results)):
-                    if results[i][0]==None:
-                        results[i][0]=0
-                    if results[i][0]>best_accuracy:
-                        #(avg_accuracy,PCA_components,TDV_days,years_test,year_train)
-                        best_accuracy=results[i][0]
-                        best_TreeCount=results[i][1]
-                        best_TDV_days=results[i][2]
-                        #best_meteo_days=inputs[i][2]
-                        #best_TDV_sampling=inputs[i][3]
-                        #best_meteo_sampling=inputs[i][4]
-                        print('best accuracy: ',best_accuracy)
-                temperature=temperature-(temperature*temp_step_scale/epochs)
-                #print(epoch/epochs*100,'% done, temperature: ',temperature)
-                #guarda los parámetros de entrada y el resultado en el fichero de resultados
-                for i in range(len(results)):
-                    file.write(str(results[i][1]) + ',' + str(results[i][2]) + ',' + str(results[i][0]) + '\n')
-                    file.flush()
+            #comprueba si alguno de los resultados es mejor que el actual y obtiene los parámetros de entrada asociados
+            for i in range(len(results)):
+                if results[i][0]==None:
+                    results[i][0]=0
+                if results[i][0]>best_accuracy:
+                    #(avg_accuracy,PCA_components,TDV_days,years_test,year_train)
+                    best_accuracy=results[i][0]
+                    best_TreeCount=results[i][1]
+                    best_TDV_days=results[i][2]
+                    #best_meteo_days=inputs[i][2]
+                    #best_TDV_sampling=inputs[i][3]
+                    #best_meteo_sampling=inputs[i][4]
+                    print('best accuracy: ',best_accuracy)
+            temperature=temperature-(temperature*temp_step_scale/epochs)
+            #print(epoch/epochs*100,'% done, temperature: ',temperature)
+            #guarda los parámetros de entrada y el resultado en el fichero de resultados
+            for i in range(len(results)):
+                file.write(str(results[i][1]) + ',' + str(results[i][2]) + ',' + str(results[i][0]) + '\n')
+                file.flush()
             #cierra el fichero de resultados
             file.close()
             #añade el resultado al fichero meta
