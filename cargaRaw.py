@@ -1,7 +1,7 @@
 import pandas as pd
 
 folder=""
-year="2016"
+year="2015"
 
 df1 = pd.read_csv(folder+year+" hoja 1.csv",na_values='.') # Meteo diario
 

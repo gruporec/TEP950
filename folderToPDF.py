@@ -2,7 +2,7 @@ import os
 import sys
 from fpdf import FPDF
 
-folder="ignore\\resultadosTDV\\comp"
+folder="ignore\\resultadosTDV\\batch\\PCALDA\\IMG\\AnalisisID58"
 
 #escanea el directorio y devuelve una lista con los subdirectorios
 def fast_scandir(dirname):
