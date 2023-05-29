@@ -594,7 +594,7 @@ if __name__=='__main__':
     year_train = "2014"
     years_test = ["2015","2016","2019"]
 
-    meta_file='ignore/resultadosTDV/batch/PCALDA_fut/meta2.csv'
+    meta_file='ignore/resultadosTDV/batch/PCALDA_fut2/meta2.csv'
     # comprueba si el fichero meta existe. Si no existe, lo crea, añadiendo la cabecera
     if not os.path.isfile(meta_file):
         m_file=open(meta_file,'w')
@@ -602,7 +602,7 @@ if __name__=='__main__':
         m_file.close()
 
     # carga el archivo de tests en un dataframe
-    tests = pd.read_csv('ignore/resultadosTDV/batch/PCALDA_fut/programmedTests3.csv')
+    tests = pd.read_csv('ignore/resultadosTDV/batch/PCALDA_fut2/programmedTests3.csv')
     # asigna la primera columna como índice
     tests.set_index('ID',inplace=True)
     # convierte el contenido de tests en booleano
@@ -613,7 +613,7 @@ if __name__=='__main__':
             # convierte row en una tupla
             row = tuple(row)
 
-            res_file_target='ignore/resultadosTDV/batch/PCALDA_fut/'+str(index)
+            res_file_target='ignore/resultadosTDV/batch/PCALDA_fut2/'+str(index)
             # comprueba si el fichero de resultados existe. Si existe, modifica el nombre para no sobreescribirlo utilizando un contador hasta encontrar un nombre que no exista
             i=0
             res_file=res_file_target+'.csv'
@@ -660,8 +660,8 @@ if __name__=='__main__':
             # Carga de datos
             tdv_train,ltp_train,meteo_train,data_train=isl.cargaDatosTDV(year_train,"rht")
 
-            # retrasa data_train un día sumando un día a la fecha
-            data_train['fecha']=data_train['fecha']+pd.Timedelta(days=1)
+            # retrasa data_train un día sumando un día al índice
+            data_train.index=data_train.index+pd.Timedelta(days=2)
 
             #crea dos listas vacías para los datos de test
             tdv_tests=[]
@@ -673,8 +673,8 @@ if __name__=='__main__':
                 #carga los datos de test
                 tdv_test,ltp_test,meteo_test,data_test=isl.cargaDatosTDV(year_test,"rht")
 
-                # retrasa data_test un día sumando un día a la fecha
-                data_test['fecha']=data_test['fecha']+pd.Timedelta(days=1)
+                # retrasa data_test un día sumando un día al índice
+                data_test.index=data_test.index+pd.Timedelta(days=2)
 
                 #añade los datos de test a las listas
                 tdv_tests.append(tdv_test.copy())
@@ -699,7 +699,10 @@ if __name__=='__main__':
                 
                 for batch_el in range(batch_size):
                     TDV_days=search_TDV_days+np.random.randint(max(-temperature*days_temp_scale,-search_TDV_days+1),min(temperature*days_temp_scale,max_days-search_TDV_days))
-                    PCA_components=search_PCA_components+np.random.randint(max(-temperature*pca_temp_scale,1-search_PCA_components),min(temperature*pca_temp_scale,num_params*TDV_days-search_PCA_components))
+                    if int(max(-temperature*pca_temp_scale-1,-search_PCA_components))<int(min(temperature*pca_temp_scale,num_params*TDV_days-search_PCA_components)):
+                        PCA_components=search_PCA_components+np.random.randint(max(-temperature*pca_temp_scale-1,-search_PCA_components),min(temperature*pca_temp_scale,num_params*TDV_days-search_PCA_components))
+                    else:
+                        PCA_components=num_params*TDV_days
                     inputs.append((PCA_components,TDV_days,years_test,year_train,row,tdv_train.copy(), data_train.copy(), tdv_tests.copy(), data_tests.copy()))
 
                 #por cada elemento de la lista de inputs
@@ -755,5 +758,5 @@ if __name__=='__main__':
             m_file.close()
             #marca el test como hecho
             tests.at[index,'done'] = True
-            tests.to_csv('ignore/resultadosTDV/batch/PCALDA_fut/programmedTests3.csv',index=True)
+            tests.to_csv('ignore/resultadosTDV/batch/PCALDA_fut2/programmedTests3.csv',index=True)
             print('test ',index,' done; best accuracy: ',best_accuracy)
