@@ -2,7 +2,7 @@ import os
 import sys
 from fpdf import FPDF
 
-folder="ignore\\resultadosTDV\\batch\\PCALDA\\IMG\\AnalisisID58"
+folder="ignore\\resultadosTDV\\batch\\PCALDA\\IMG\\AnalisisID58\\mensual"
 
 #escanea el directorio y devuelve una lista con los subdirectorios
 def fast_scandir(dirname):
@@ -24,14 +24,13 @@ for subfolder in subfolders:
         pdf = FPDF()
         #para el nombre del pdf, obtiene el nombre de cada subdirectorio
         subfoldersplit=subfolder.split("\\")
-        print(subfoldersplit[-2]+"-"+subfoldersplit[-3]+"d-"+subfoldersplit[-1])
         #por cada archivo png, añade una página al pdf
         for file in files:
-            pdf.add_page()
-            pdf.image(subfolder+"\\"+file,0,0,210,297)
+            pdf.add_page("L")
+            pdf.image(subfolder+"\\"+file,0,0,297,210)
         
         #guarda el pdf en el directorio
-        pdf.output(subfolder+"\\"+subfoldersplit[-2]+"-"+subfoldersplit[-3]+"d-"+subfoldersplit[-1]+".pdf","F")
+        pdf.output(subfolder+"\\"+subfoldersplit[-3]+"-"+subfoldersplit[-2]+"-"+subfoldersplit[-1]+".pdf","F")
 
         print("PDF creado en "+subfolder+".pdf")
 # #guarda el pdf en el directorio principal
