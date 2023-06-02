@@ -109,7 +109,7 @@ for i in range(len(tdv_tests)):
                 # añade un título al gráfico
             plt.title("Sensor: "+str(col)+" mes: "+str(month))
             # añade una leyenda al gráfico que indique dos X en negro, junto a la de arriba el texto "valor predicho" y junto a la de abajo, "valor real"
-            legend_elements = [matplotlib.lines.Line2D([0], [0], marker='x', linestyle='None', label='Valor predicho', color='k', markersize=8),matplotlib.lines.Line2D([0], [0], marker='x', linestyle='None', label='Valor real', color='k', markersize=8)]
+            legend_elements = [matplotlib.lines.Line2D([0], [0], marker='x', linestyle='None', label='Valor real', color='k', markersize=8),matplotlib.lines.Line2D([0], [0], marker='x', linestyle='None', label='Valor predicho', color='k', markersize=8)]
             #añade la leyenda en la esquina superior izquierda
             plt.legend(handles=legend_elements, loc="upper left")
 
