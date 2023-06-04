@@ -9,7 +9,7 @@ import matplotlib.pyplot as plt
 
 # grafica una variable sum_i(a*x^(b^i)), siendo x el valor max-max, a el peso (1 para positivos, variable para negativos)
 # y b el exponente (menor que 1, menor peso a valores antiguos)
-# frente al número de días con x negativo, asignando colores según la clase
+# frente a sum_i(y*c^i), siendo y el número de días con x negativo y c un peso, asignando colores según la clase
 
 # Define una función que por cada valor entre 1 y days, devuelve un dataframe con los valores de days días antes
 def get_prev_days(df, days):
@@ -104,7 +104,7 @@ if __name__=='__main__':
     Time_exp = [0.1,0.5,1]
     Neg_count_w = [0.25,0.5,1,2]
 
-    save_folder = 'ignore/resultadosTDV/batch/CompWMM/'
+    save_folder = 'ignore/resultadosTDV/batch/CompWMM2/'
     if not os.path.exists(save_folder):
         os.makedirs(save_folder)
 
@@ -124,7 +124,12 @@ if __name__=='__main__':
     # obtiene el máximo de tdv de cada día
     tdv_tests_max = []
     for i in range(len(tdv_tests)):
-        tdv_tests_max.append(tdv_tests[i].groupby(tdv_tests[i].index.date).max())
+        
+        #obtiene los valores de tdv cada día de 5:00 a 8:00
+        tdv_test_m = tdv_tests[i].between_time('5:00', '8:00')
+            
+        #obtiene el máximo diario de tdv
+        tdv_tests_max.append(tdv_test_m.groupby(tdv_test_m.index.date).max())
 
     # obtiene el incremento del máximo respecto al día anterior de cada día de test
     tdv_tests_max_inc = []

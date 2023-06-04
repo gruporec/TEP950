@@ -20,8 +20,8 @@ matplotlib.use('Agg')
 
 years_test = ["2014","2015","2016","2019"]
 
-load_folder = 'ignore/resultadosTDV/batch/PCALDA/IMG/AnalisisID58/'
-save_folder = 'ignore/resultadosTDV/batch/PCALDA/IMG/AnalisisID58/mensual/'
+load_folder = 'ignore/resultadosTDV/batch/PCALDA6am/IMG/AnalisisID80/'
+save_folder = 'ignore/resultadosTDV/batch/PCALDA6am/IMG/AnalisisID80/mensual/'
 if not os.path.exists(load_folder):
     os.makedirs(load_folder)
 if not os.path.exists(save_folder):
@@ -69,6 +69,11 @@ for i in range(len(tdv_tests)):
             plt.figure(figsize=(11.69,8.27))
             # extrae el dataframe que contiene los datos de la columna j del mes month como copia
             tdv_test_month=tdv_tests[i].loc[tdv_tests[i].index.month==month].iloc[:,j].copy()
+            # añade el último día del mes anterior al dataframe
+            tdv_test_month=tdv_test_month.append(tdv_tests[i].loc[tdv_tests[i].index.month==month-1].iloc[:,j].copy().tail(1440))
+            # ordena los datos por fecha
+            tdv_test_month=tdv_test_month.sort_index()
+
             # grafica los datos de tdv_tests[i] de la columna j del mes month
             plt.plot(tdv_test_month,label=tdv_tests[i].columns[j])
             # obtiene los índices de la columna j del mes month en los que el día es par y la hora las 00:00:00
@@ -79,8 +84,16 @@ for i in range(len(tdv_tests)):
                 plt.axvspan(day,day+pd.Timedelta(days=1),color='gray',alpha=0.1)
             # obtiene el nombre de la columna j
             col=tdv_tests[i].columns[j]
-            # obtiene los índices de los datos de test de la columna j del mes month en los que la hora es las 00:00:00 y elimina la hora
-            days=data_tests[i].loc[(data_tests[i].index.month==month) & (data_tests[i].index.time==time(0,0,0))].index.date
+            # obtiene los índices de los datos de test de la columna j del mes month en los que la hora es las 00:00:00
+            days=data_tests[i].loc[(data_tests[i].index.month==month) & (data_tests[i].index.time==time(0,0,0))].index
+
+            # por cada día
+            for day in days:
+                #añade un área de color verde entre las 5:00 y las 8:00
+                plt.axvspan(day+pd.Timedelta(hours=5),day+pd.Timedelta(hours=8),color='green',alpha=0.1)
+
+            #elimina la hora de days
+            days=days.date
 
             # por cada día
             for day in days:

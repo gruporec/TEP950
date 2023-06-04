@@ -1,6 +1,6 @@
 import pandas as pd
 
-folder = 'ignore/resultadosTDV/batch/PCALDA/'
+folder = 'ignore/resultadosTDV/batch/PCALDA6am/'
 testsFile = folder + 'programmedTests3.csv'
 resultsFile = folder + 'meta2.csv'
 
