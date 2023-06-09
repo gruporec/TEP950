@@ -112,10 +112,12 @@ for i in range(len(tdv_tests)):
                 if day in riego_test.index:
                     precip=str(int(round(riego_test.fillna(0).loc[day,"Precipitacion"])))
                     eto=str(int(round(riego_test.fillna(0).loc[day,"Eto"])))
+                    rcont=str(int(round(riego_test.fillna(0).loc[day,"Riego Control"])))
                     riego=str(int(round(riego_test.fillna(0).loc[day,col])))
                 else:
                     precip=""
                     eto=""
+                    rcont=""
                     riego=""
                 
                 xpos=pd.to_datetime(str(day_date)+" 12:00:00",format="%Y-%m-%d %H:%M:%S")
@@ -125,7 +127,7 @@ for i in range(len(tdv_tests)):
                 #si no, asigna 0 a ypos
                 else:
                     ypos=0
-                day_text=real+"\n"+precip+"\n"+riego+"\n"+eto
+                day_text=real+"\n"+precip+"\n"+riego+"\n"+rcont
                 #escribe el valor de real en el gráfico con un recuadro de color rojo, verde o azul dependiendo de si es 3, 2 o 1
                 if real=="1":
                     plt.text(xpos,ypos,day_text,horizontalalignment='center',verticalalignment='top',fontsize=8,color='blue')
