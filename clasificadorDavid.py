@@ -10,6 +10,7 @@ import numpy as np
 from datetime import time
 
 from sklearn.ensemble import RandomForestClassifier
+from sklearn.tree import DecisionTreeClassifier
 import isadoralib as isl
 import sklearn.discriminant_analysis as skda
 import sklearn.metrics as skmetrics
@@ -81,9 +82,13 @@ for n in n_list:
     bk=tdv_5_8_max_diff_sign.copy()
     #crea otra copia de tdv_5_8_max_diff_sign para usarla como auxiliar
     bk_aux=tdv_5_8_max_diff_sign.copy()
+    #crea otra copia más para hacer el cálculo como si n=1
+    bk1=tdv_5_8_max_diff_sign.copy()
+
     #elimina valores nan
     bk=bk.dropna()
     bk_aux=bk_aux.dropna()
+    bk1=bk1.dropna()
 
     #repite n-1 veces
     for i in range(1,n,1):
@@ -123,14 +128,16 @@ for n in n_list:
     tdv_5_8_max.index = pd.to_datetime(tdv_5_8_max.index)
     pk.index = pd.to_datetime(pk.index)
     bk.index = pd.to_datetime(bk.index)
+    bk1.index = pd.to_datetime(bk1.index)
     max_ctend_diff.index = pd.to_datetime(max_ctend_diff.index)
     trdatapd.index = pd.to_datetime(trdatapd.index)
 
-    # recorta los dataframes tdv_5_8_max, pk, bk, max_ctend_diff y valdatapd para que tengan el mismo tamaño e índices
-    common_index = tdv_5_8_max.index.intersection(pk.index).intersection(bk.index).intersection(max_ctend_diff.index).intersection(trdatapd.index)
+    # recorta los dataframes tdv_5_8_max, pk, bk, bk1, max_ctend_diff y valdatapd para que tengan el mismo tamaño e índices
+    common_index = tdv_5_8_max.index.intersection(pk.index).intersection(bk.index).intersection(max_ctend_diff.index).intersection(trdatapd.index).intersection(bk1.index)
     tdv_5_8_max = tdv_5_8_max.loc[common_index]
     pk = pk.loc[common_index]
     bk = bk.loc[common_index]
+    bk1 = bk1.loc[common_index]
     max_ctend_diff = max_ctend_diff.loc[common_index]
     trdatapd = trdatapd.loc[common_index]
 
@@ -138,14 +145,19 @@ for n in n_list:
     tdv_max_stack=tdv_5_8_max.stack()
     pk_stack=pk.stack()
     bk_stack=bk.stack()
+    bk1_stack=bk1.stack()
     ctend_stack=max_ctend_diff.stack()
     data_stack_tr=trdatapd.stack()
 
     # crea un dataframe con los valores de tdv_max_stack, pk_stack, bk_stack y ctend_stack como columnas
-    data_tr=pd.DataFrame({'tdv_max':tdv_max_stack.copy(),'pk':pk_stack.copy(),'bk':bk_stack.copy(),'ctend':ctend_stack.copy()})
+    #data_tr=pd.DataFrame({'tdv_max':tdv_max_stack.copy(),'pk':pk_stack.copy(),'bk':bk_stack.copy(),'ctend':ctend_stack.copy()})
+    # crea un dataframe con los valores de pk_stack, bk_stack, ctend_stack y bk1 como columnas
+    data_tr=pd.DataFrame({'pk':pk_stack.copy(),'bk':bk_stack.copy(),'ctend':ctend_stack.copy(),'bk1':bk1_stack.copy()})
+    # ordena las filas según el orden de data_stack_tr
+    data_tr=data_tr.loc[data_stack_tr.index]
 
     # crea un clasificador QDA
-    clf = skda.QuadraticDiscriminantAnalysis()
+    clf=skda.QuadraticDiscriminantAnalysis()
 
     # entrena el clasificador con los valores de data y los valores de data_stack
     clf.fit(data_tr,data_stack_tr)
@@ -222,6 +234,9 @@ for n in n_list:
         bk=tdv_5_8_max_diff_sign.copy()
         #crea otra copia de tdv_5_8_max_diff_sign para usarla como auxiliar
         bk_aux=tdv_5_8_max_diff_sign.copy()
+        
+        #crea otra copia más para hacer el cálculo como si n=1
+        bk1=tdv_5_8_max_diff_sign.copy()
         #elimina valores nan
         bk=bk.dropna()
         bk_aux=bk_aux.dropna()
@@ -237,6 +252,7 @@ for n in n_list:
 
         #elimina los valores nan
         bk=bk.dropna()
+        bk1=bk1.dropna()
 
         # crea un dataframe con diff tdv_5_8_max_diff_sign que representa los cambios de tendencia
         ctend=pd.DataFrame(tdv_5_8_max_diff_sign.diff(periods=1).dropna())
@@ -264,14 +280,16 @@ for n in n_list:
         tdv_5_8_max.index = pd.to_datetime(tdv_5_8_max.index)
         pk.index = pd.to_datetime(pk.index)
         bk.index = pd.to_datetime(bk.index)
+        bk1.index = pd.to_datetime(bk1.index)
         max_ctend_diff.index = pd.to_datetime(max_ctend_diff.index)
         valdatapd.index = pd.to_datetime(valdatapd.index)
 
-        # recorta los dataframes tdv_5_8_max, pk, bk, max_ctend_diff y valdatapd para que tengan el mismo tamaño e índices
-        common_index = tdv_5_8_max.index.intersection(pk.index).intersection(bk.index).intersection(max_ctend_diff.index).intersection(valdatapd.index)
+        # recorta los dataframes tdv_5_8_max, pk, bk, bk1, max_ctend_diff y valdatapd para que tengan el mismo tamaño e índices
+        common_index = tdv_5_8_max.index.intersection(pk.index).intersection(bk.index).intersection(max_ctend_diff.index).intersection(valdatapd.index).intersection(bk1.index)
         tdv_5_8_max = tdv_5_8_max.loc[common_index]
         pk = pk.loc[common_index]
         bk = bk.loc[common_index]
+        bk1 = bk1.loc[common_index]
         max_ctend_diff = max_ctend_diff.loc[common_index]
         valdatapd = valdatapd.loc[common_index]
 
@@ -279,11 +297,13 @@ for n in n_list:
         tdv_max_stack=tdv_5_8_max.stack()
         pk_stack=pk.stack()
         bk_stack=bk.stack()
+        bk1_stack=bk1.stack()
         ctend_stack=max_ctend_diff.stack()
         data_stack_val=valdatapd.stack()
 
         # crea un dataframe con los valores de tdv_max_stack, pk_stack, bk_stack y ctend_stack como columnas
-        data_val=pd.DataFrame({'tdv_max':tdv_max_stack.copy(),'pk':pk_stack.copy(),'bk':bk_stack.copy(),'ctend':ctend_stack.copy()})
+        #data_val=pd.DataFrame({'tdv_max':tdv_max_stack.copy(),'pk':pk_stack.copy(),'bk':bk_stack.copy(),'ctend':ctend_stack.copy()})
+        data_val=pd.DataFrame({'pk':pk_stack.copy(),'bk':bk_stack.copy(),'ctend':ctend_stack.copy(),'bk1':bk1_stack.copy()})
 
         # aplica el clasificador a los valores de data de validación
         pred_val=clf.predict(data_val)
