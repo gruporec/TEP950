@@ -42,7 +42,7 @@ def cargaDatosTDV(year,sufix):
 
     # Carga datos de validacion
     valdatapd=pd.read_csv("validacion"+year+"TDV.csv")
-    valdatapd.dropna(inplace=True)
+    #valdatapd.dropna(inplace=True)
     valdatapd['Fecha'] = pd.to_datetime(valdatapd['Fecha'])
     valdatapd.set_index('Fecha',inplace=True)
 

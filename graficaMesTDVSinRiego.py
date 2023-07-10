@@ -19,8 +19,8 @@ matplotlib.use('Agg')
 
 
 #years_test = ["2014","2015","2016","2019"]
-years_test = ["2015"]
-#years_test = ["2015","2016","2019"]
+#years_test = ["2015"]
+years_test = ["2015","2016","2019"]
               
 save_folder = 'ignore/resultadosTDV/batch/PCALDA6am/IMG/OriginalRiegoDatosNuevos/'
 if not os.path.exists(save_folder):
@@ -46,15 +46,6 @@ for year_test in years_test:
     #añade los datos de test a las listas
     tdv_tests.append(tdv_test.copy())
     data_tests.append(data_test.copy())
-
-    #si existe, carga "rawRiego"+year_test+".csv" como dataframe. Si no, crea un dataframe vacío
-    if os.path.isfile("rawRiego"+year_test+".csv"):
-        riego_test=pd.read_csv("rawRiego"+year_test+".csv",index_col=0,parse_dates=True)
-    else:
-        riego_test=pd.DataFrame()
-        #convierte el índice de riego_test a datetime
-        riego_test.index=pd.to_datetime(riego_test.index)
-    print(riego_test)
 
 
 # por cada elemento de tdv_tests
@@ -87,8 +78,9 @@ for i in range(len(tdv_tests)):
                 plt.axvspan(day,day+pd.Timedelta(days=1),color='gray',alpha=0.1)
             # obtiene el nombre de la columna j
             col=tdv_tests[i].columns[j]
-            # obtiene los índices de los datos de test de la columna j del mes month en los que la hora es las 00:00:00
-            days=data_tests[i].loc[(data_tests[i].index.month==month) & (data_tests[i].index.time==time(0,0,0))].index
+
+            # obtiene los índices de los datos de test de la columna j del mes month
+            days=data_tests[i].loc[(data_tests[i].index.month==month)].index
 
             # por cada día
             for day in days:
@@ -104,30 +96,11 @@ for i in range(len(tdv_tests)):
                 day=days[iday]
                 day_date=days_date[iday]
 
-                #si existe, obtiene el valor de la columna "real" de results correspondiente al día day en el primer índice y la columna j en el segundo índice
+                #si existe, obtiene el valor de la columna "real" correspondiente al día day en el primer índice y la columna j en el segundo índice
                 if (str(day_date),col) in data_tests[i].stack().index:
                     real=str(int(data_tests[i].stack().loc[(str(day_date),col)]))
                 else:
                     real=""
-            
-            # obtiene los índices de los datos de riego dentro del mes month
-            days=riego_test.loc[riego_test.index.month==month].index
-            days_date=days.date
-
-            # por cada día
-            for iday in range(len(days)):
-                #si existe, obtiene el valor de la columna "Precipitacion" de riego_test correspondiente al día day, el de la columna "Eto" y el de la columna j
-                #redondeando los valores al entero más cercano y fijando a 0 el valor nan
-                if day in riego_test.index:
-                    precip=str(int(round(riego_test.fillna(0).loc[day,"Precipitacion"])))
-                    eto=str(int(round(riego_test.fillna(0).loc[day,"Eto"])))
-                    rcont=str(int(round(riego_test.fillna(0).loc[day,"Riego Control"])))
-                    riego=str(int(round(riego_test.fillna(0).loc[day,col])))
-                else:
-                    precip=""
-                    eto=""
-                    rcont=""
-                    riego=""
                 
                 xpos=pd.to_datetime(str(day_date)+" 12:00:00",format="%Y-%m-%d %H:%M:%S")
                 #si hay datos en tdv_test_month, asigna el mínimo a ypos
@@ -136,7 +109,7 @@ for i in range(len(tdv_tests)):
                 #si no, asigna 0 a ypos
                 else:
                     ypos=0
-                day_text=real+"\n"+precip+"\n"+riego+"\n"+rcont
+                day_text=real
                 #escribe el valor de real en el gráfico con un recuadro de color rojo, verde o azul dependiendo de si es 3, 2 o 1
                 if real=="1":
                     plt.text(xpos,ypos,day_text,horizontalalignment='center',verticalalignment='top',fontsize=8,color='blue')

@@ -20,17 +20,21 @@ import sklearn.decomposition as skdecomp
 matplotlib.use('Agg')
 
 year_train="2014"
-desfase_estres_train=-1
+desfase_estres_train=0
 years_val=["2015","2016","2019"]
-desfases_estres_val=[1,1,0]
+desfases_estres_val=[0,0,0]
 n = 3
-save_folder = "ignore\\resultadosTDV\\batch\\Caracteristicas TDV\\Clasificador 1 dia ant\\"
+save_folder = "ignore\\resultadosTDV\\batch\\Caracteristicas TDV\\Clasificador 1 dia ant nuevos\\"
 alpha = 0.2
 alpha_points=0.4
 
 # Ejecuta cargaRaw.py si no existe rawDiarios.csv o rawMinutales.csv
 if not os.path.isfile("rawDiarios"+year_train+".csv") or not os.path.isfile("rawMinutales"+year_train+".csv"):
     os.system("python3 cargaRaw.py")
+
+# Crea la carpeta de resultados si no existe
+if not os.path.exists(save_folder):
+    os.makedirs(save_folder)
 
 #datos de entrenamiento
 

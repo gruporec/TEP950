@@ -17,9 +17,9 @@ import sklearn.metrics as skmetrics
 import sklearn.decomposition as skdecomp
 
 year_train="2014"
-desfase_estres_train=-1
-years_val=["2015","2016"]
-desfases_estres_val=[1,1]
+desfase_estres_train=0
+years_val=["2015","2016","2019"]
+desfases_estres_val=[0,0,0]
 n_list=[1,2,3,4,5,6,7,8,9,10,11,12,13,14]
 
 # Ejecuta cargaRaw.py si no existe rawDiarios.csv o rawMinutales.csv
@@ -305,9 +305,15 @@ for n in n_list:
         #data_val=pd.DataFrame({'tdv_max':tdv_max_stack.copy(),'pk':pk_stack.copy(),'bk':bk_stack.copy(),'ctend':ctend_stack.copy()})
         data_val=pd.DataFrame({'pk':pk_stack.copy(),'bk':bk_stack.copy(),'ctend':ctend_stack.copy(),'bk1':bk1_stack.copy()})
 
+        #recorta data_val a los índices de data_stack_val
+        data_val=data_val.loc[data_stack_val.index]
+
         # aplica el clasificador a los valores de data de validación
         pred_val=clf.predict(data_val)
 
+        # print(data_val)
+        # print(data_stack_val)
+        # print(len(pred_val))
         acc=skmetrics.balanced_accuracy_score(data_stack_val,pred_val)
 
         print('n: '+str(n))
