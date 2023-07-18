@@ -1,4 +1,7 @@
 import pandas as pd
+import numpy as np
+import scipy.sparse as sp
+import qpsolvers as qp
 
 def cargaDatos(year,sufix):
     '''Carga los datos de un año almacenados en los archivos [year][sufix].csv y validacion[year].csv y devuelve una tupla (tdv,ltp,meteo,estado hídrico).'''
