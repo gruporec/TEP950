@@ -112,10 +112,11 @@ class KriggingClassifier:
 
         # Calcula la matriz G de tamaño 2*N+1 x 2*N con cuatro matrices identidad de tamaño N y una columna de ceros. Todas las matrices identidad tienen signo negativo excepto la esquina superior derecha
         self.G = np.zeros([2*Xtrain.shape[1], 2*Xtrain.shape[1]])
-        self.G[:Xtrain.shape[1], :Xtrain.shape[1]] = -np.eye(Xtrain.shape[1])
+        self.G[:Xtrain.shape[1], :Xtrain.shape[1]] = np.eye(Xtrain.shape[1])
         self.G[Xtrain.shape[1]:2*Xtrain.shape[1], Xtrain.shape[1]:2*Xtrain.shape[1]] = -np.eye(Xtrain.shape[1])
         self.G[Xtrain.shape[1]:2*Xtrain.shape[1], :Xtrain.shape[1]] = -np.eye(Xtrain.shape[1])
-        self.G[:Xtrain.shape[1], Xtrain.shape[1]:2*Xtrain.shape[1]] = np.eye(Xtrain.shape[1])
+        self.G[:Xtrain.shape[1], Xtrain.shape[1]:2*Xtrain.shape[1]] = -np.eye(Xtrain.shape[1])
+
         # Convierte G en una matriz dispersa
         self.G = sp.csc_matrix(self.G)
 
@@ -160,6 +161,7 @@ class KriggingClassifier:
 
             # Obtiene el vector de lambdas de los datos de entrenamiento
             lambda_i = T[:self.Xtrain.shape[1]]
+            t_i = T[self.Xtrain.shape[1]:]
         return (f, lambda_i)
     
     def lambda_classifier(self, x):

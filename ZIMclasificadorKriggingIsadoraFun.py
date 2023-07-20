@@ -389,8 +389,8 @@ for alph in alphas:
         # Marca el tiempo de inicio
         timeclasstart=tm.time()
         
-        # crea un clasificador de krigging
-        kr_lambda = isl.KriggingClassifier(Xtr.T, alph, Ytr)
+        # crea un clasificador de krigging basado en función de costes
+        kr_lambda = isl.KriggingFunctionClassifier(Xtr.T, alph, Ytr)
         # kr_lambda.minTraining()
         # crea un vector de predicciones
         y_pred_lambda_ts = np.zeros(Xv.shape[0])
@@ -398,7 +398,7 @@ for alph in alphas:
         # para cada muestra de test
         for i in range(Xv.shape[0]):
             # aplica el clasificador
-            y_pred_lambda = kr_lambda.lambda_classifier(Xv[i])
+            y_pred_lambda = kr_lambda.fun_classifier(Xv[i])
             y_pred_lambda_ts[i] = y_pred_lambda
 
         
