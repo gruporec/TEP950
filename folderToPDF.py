@@ -2,7 +2,7 @@ import os
 import sys
 from fpdf import FPDF
 
-folders=["ignore\\resultadosTDV\\batch\\PCALDA6am\\IMG\\OriginalRiegoDatosNuevosColor\\2019"]
+folders=["ignore\\resultadosTDV\\batch\\PCALDA6am\\IMG\\OriginalRiegoDatosNuevosColor\\2019 clasified"]
 
 for folder in folders:
     #escanea el directorio y devuelve una lista con los subdirectorios
