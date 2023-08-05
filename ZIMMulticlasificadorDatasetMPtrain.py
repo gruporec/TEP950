@@ -23,8 +23,8 @@ balanceTrainingClasses = True
 # número de repeticiones para mixed=True
 nrep=1000
 
-# porcentaje de datos de entrenamiento si mixed=True
-mixedtrain=0.9
+# fracción de datos de entrenamiento si mixed=True
+mixedtrains=[0.1,0.2,0.3,0.4,0.5,0.6,0.7,0.8,0.9,1]
 
 # años de datos de entrenamiento si mixed=False
 year_train=["2014"]
@@ -35,7 +35,7 @@ dopca=True
 ncomp=13
 
 # tipo de clasificador: "lda", "qda", "kriggingfun","krigginglam"
-clasif="lda"
+clasif="qda"
 
 # alpha para krigging
 alphas=[0,0.1,0.2,0.3,0.4,0.5,0.6,0.7,0.8,0.9,1]
@@ -61,7 +61,9 @@ if not mixed:
 if clasif!="kriggingfun" and clasif!="krigginglam":
     alphas=[0]
 
-def process(alpha):
+def process(alphamixedtrain):
+    #separa alpha y mixedtrain
+    alpha,mixedtrain=alphamixedtrain
     if mixed:
         if keepClassProportions:
             #crea una lista de dataframes separados por clase
@@ -194,35 +196,35 @@ def process(alpha):
 
 #clase main
 if __name__ == "__main__":
-    for alpha in alphas:
-        # crea una lista vacía para la precisión de test y otra para la precisión de entrenamiento
-        testaccalpha=[]
-        trainaccalpha=[]
-        # crea una pool de procesos
-        pool = mp.Pool(mp.cpu_count())
+    for mixedtrain in mixedtrains:
+        for alpha in alphas:
+            # crea una lista vacía para la precisión de test y otra para la precisión de entrenamiento
+            testaccalpha=[]
+            trainaccalpha=[]
+            # crea una pool de procesos
+            pool = mp.Pool(mp.cpu_count())
 
-        #crea una lista con el valor alpha repetido nrep veces
-        alphal=[alpha]*nrep
+            #crea una lista con las tuplas (mixedtrain,alpha) para cada repetición
+            alphal=[(alpha,mixedtrain)]*nrep
+            out = tqdm.tqdm(pool.imap(process, alphal), total=nrep)
+            #separa out en trainaccalpha,testaccalpha teniendo en cuenta que out es una lista de tuplas (trainacc,testacc)
+            for trainaccout,testaccout in out:
+                trainaccalpha.append(trainaccout)
+                testaccalpha.append(testaccout)
+            #calcula la precisión media de entrenamiento y de test
+            tracc=np.mean(trainaccalpha)
+            teacc=np.mean(testaccalpha)
+            #añade la precisión media de entrenamiento y de test a las listas
+            trainacc.append(tracc)
+            testacc.append(teacc)
 
-        out = tqdm.tqdm(pool.imap(process, alphal), total=nrep)
-        #separa out en trainaccalpha,testaccalpha teniendo en cuenta que out es una lista de tuplas (trainacc,testacc)
-        for trainaccout,testaccout in out:
-            trainaccalpha.append(trainaccout)
-            testaccalpha.append(testaccout)
-        #calcula la precisión media de entrenamiento y de test
-        tracc=np.mean(trainaccalpha)
-        teacc=np.mean(testaccalpha)
-        #añade la precisión media de entrenamiento y de test a las listas
-        trainacc.append(tracc)
-        testacc.append(teacc)
+            #añade el valor máximo de la precisión de test a la lista
+            testaccmax.append(max(testaccalpha))
+            trainaccmax.append(max(trainaccalpha))
 
-        #añade el valor máximo de la precisión de test a la lista
-        testaccmax.append(max(testaccalpha))
-        trainaccmax.append(max(trainaccalpha))
-
-        #añade el valor mínimo de la precisión de test a la lista
-        testaccmin.append(min(testaccalpha))
-        trainaccmin.append(min(trainaccalpha))
+            #añade el valor mínimo de la precisión de test a la lista
+            testaccmin.append(min(testaccalpha))
+            trainaccmin.append(min(trainaccalpha))
 
     # resta al valor máximo y al mínimo el valor medio para obtener el error
     testaccmax=np.array(testaccmax)-np.array(testacc)
@@ -240,9 +242,9 @@ if __name__ == "__main__":
     #crea una gráfica con los valores de alpha y la precisión balanceada
     # plt.plot(alphas,trainacc,label='train')
     # plt.plot(alphas,testacc,label='test')
-    plt.errorbar(alphas,trainacc,yerr=trainaccerr,label='train',capsize=5,fmt='o-')
-    plt.errorbar(alphas,testacc,yerr=testaccerr,label='test',capsize=5, fmt='o-')
-    plt.xlabel('alpha')
+    plt.errorbar(mixedtrains,trainacc,yerr=trainaccerr,label='train',capsize=5,fmt='o-')
+    plt.errorbar(mixedtrains,testacc,yerr=testaccerr,label='test',capsize=5, fmt='o-')
+    plt.xlabel('fraction of data used for train')
     plt.ylabel('balanced accuracy')
     plt.legend()
     plt.show()
