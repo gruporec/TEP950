@@ -41,8 +41,6 @@ sun_tests=[]
 # for each test year
 for year_test in years_test:
 
-    if not os.path.isfile("rawDiarios"+year_test+".csv") or not os.path.isfile("rawMinutales"+year_test+".csv"):
-        os.system("python3 cargaRaw.py")
     #load the test data
     tdv_test,ltp_test,meteo_test,data_test=isl.cargaDatosTDV(year_test,"rht")
 
