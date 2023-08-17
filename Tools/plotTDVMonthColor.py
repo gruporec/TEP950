@@ -8,12 +8,16 @@ import matplotlib.pyplot as plt
 import matplotlib
 import numpy as np
 from datetime import time
-import isadoralib as isl
 import sklearn.discriminant_analysis as sklda
 import sklearn.metrics as skmetrics
 import sklearn.decomposition as skdecomp
 import multiprocessing as mp
 import matplotlib.patches as mpatches
+
+#add the path to the lib folder to the system path
+sys.path.append(os.path.join(os.path.dirname(__file__), '..', 'lib'))
+# import the isadoralib library
+import isadoralib as isl
 
 matplotlib.use('Agg')
 
