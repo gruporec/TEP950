@@ -8,167 +8,187 @@ import isadoralib as isl
 import seaborn as sns
 import multiprocessing as mp
 import tqdm
+import sys
+import os
+#add the path to the lib folder to the system path
+sys.path.append(os.path.join(os.path.dirname(__file__), '..', 'lib'))
+# import the isadoralib library
+import isadoralib as isl
 
 sns.set(rc={'figure.figsize':(11.7,8.27)})
 
-dataset="db14151619.csv"
+# ---CONFIGURATION---
 
-# modos de selección de datos de entrenamiento: por año (mixed=False) o mezclados (mixed=True)
+#dataset file path
+dataset="../db/ZIMdb14151619.csv"
+
+# select training data mode: by year (mixed=False) or mixed (mixed=True)
 mixed=True
-#manteder proporciones de clases originales. Solo se usa si mixed=True
+# keep original class proportions. Only used if mixed=True
 keepClassProportions = True
-#balancear clases de entrenamiento. Solo se usa si keepClassProportions=False. Si ambos son False, se seleccionan los datos de entrenamiento aleatoriamente
+# balance training classes. Only used if keepClassProportions=False. If both are False, training data is selected randomly
 balanceTrainingClasses = False
 
-# número de repeticiones para mixed=True
+# number of repetitions for mixed=True
 nrep=10
 
-# fracción de datos de entrenamiento si mixed=True
+# fraction of data used for training if mixed=True
 mixedtrains=[0.1,0.2,0.3,0.4,0.5,0.6,0.7,0.8,0.9]
 
-# años de datos de entrenamiento si mixed=False
+# training years if mixed=False
 year_train=["2014"]
 
-# aplicar PCA
+# apply PCA
 dopca=True
-# componentes para PCA
+# number of components for PCA
 ncomp=13
 
-# tipo de clasificador: "lda", "qda", "kriggingfun","krigginglam"
+# clasifier types to use. Available types: "lda", "qda", "kriggingfun","krigginglam"
+# "lda" and "qda" are the linear and quadratic discriminant analysis from sklearn
+# "kriggingfun" and "krigginglam" are the krigging based classifiers from isadoralib
 clasifs=["lda","qda","kriggingfun","krigginglam"]
 
-# alpha para krigging
-alphas=[1]
+# alpha for krigging 
+alphasorig=[1]
 
-# carga los datos de la base de datos teniendo en cuenta que hay 2 columnas de índice
+# ---END OF CONFIGURATION---
+
+# load the database taking into account that there are 2 index columns
 db=pd.read_csv(dataset,index_col=[0,1])
 
-# crea una lista vacía para la precisión media de test y otra para la precisión media de entrenamiento
+# create an empty list for the mean test accuracy and another for the mean training accuracy
 testacc=[]
 trainacc=[]
 
-# crea una lista vacía para el valor máximo de la precisión de test y otra para el valor máximo de la precisión de entrenamiento
+# create an empty list for the maximum test accuracy and another for the maximum training accuracy
 testaccmax=[]
 trainaccmax=[]
 
-# crea una lista vacía para el valor mínimo de la precisión de test y otra para el valor mínimo de la precisión de entrenamiento
+# create an empty list for the minimum test accuracy and another for the minimum training accuracy
 testaccmin=[]
 trainaccmin=[]
 if not mixed:
     nrep=1
 
+# define a function for pararell processing that takes a tuple with krigging alpha, the fraction of data that is used for training and the clasifier type
 def process(alphamixedtrain):
-    #separa alpha y mixedtrain
+    # separate the tuple elements
     alpha,mixedtrain,clasif=alphamixedtrain
+    # if training data is mixed
     if mixed:
+        # if the original class proportions must be kept
         if keepClassProportions:
-            #crea una lista de dataframes separados por clase
+            # create a list of dataframes separated by class according to manual classification
             dblist=[db.loc[db["Y"]==clase] for clase in db["Y"].unique()]
-            #por cada dataframe de la lista
+            # for each dataframe in the list
             for i in range(len(dblist)):
-                #calcula el número de datos de entrenamiento
+                # obtain the amount of training data
                 n_train=int(dblist[i].shape[0]*mixedtrain)
-                #selecciona los datos de entrenamiento aleatoriamente
+                # randomly select the training data
                 dblist[i]=dblist[i].sample(n=n_train)
-            #concatena los dataframes de la lista en un único dataframe
+            # concatenate the dataframes in the list into a single dataframe
             dbtrain=pd.concat(dblist)
+        # if the training classes must be balanced
         elif balanceTrainingClasses:
-            #obtiene el número de clases
+            # get the number of classes
             nclasses = len(db["Y"].unique())
             
-            #crea una lista de dataframes separados por clase
+            # create a list of dataframes separated by class
             dblist=[db.loc[db["Y"]==clase] for clase in db["Y"].unique()]
 
-            #obtiene el número mínimo de datos de cada clase
+            # get the number of samples of the smallest class
             n_min=min([dblist[i].shape[0] for i in range(len(dblist))])
 
-            #obtiene el número de datos de entrenamiento por clase
+            # get the number of training samples per class
             n_train=int(n_min*mixedtrain/nclasses)
 
-            #por cada dataframe de la lista
+            # for each dataframe in the list
             for i in range(len(dblist)):
-                #selecciona los datos de entrenamiento aleatoriamente
+                # randomly select the training data
                 dblist[i]=dblist[i].sample(n=n_train)
-            #concatena los dataframes de la lista en un único dataframe
+            # concatenate the dataframes in the list into a single dataframe
             dbtrain=pd.concat(dblist)
 
+        # if the training data must be selected randomly
         else:
-            #calcula el número de datos de entrenamiento
+            # get the number of training samples
             n_train=int(db.shape[0]*mixedtrain)
-            #selecciona los datos de entrenamiento aleatoriamente
+            # randomly select the training data
             dbtrain=db.sample(n=n_train)
+
+    # if training data is not mixed
     else:
-        #obtiene el año de cada dato a partir del segundo índice (yyyy-mm-dd) haciendo un split por "-"
+        # get the year of each data from the second index (yyyy-mm-dd) splitting by "-"
         db["year"]=db.index.get_level_values(1).str.split("-").str[0]
 
-        #selecciona los datos de entrenamiento como los que están en la lista year_train
+        # select the training data as the data in the year_train list
         dbtrain=db.loc[db["year"].isin(year_train)]
 
-        #elimina la columna year
+        # remove the year column
         dbtrain.drop(columns=["year"],inplace=True)
         db.drop(columns=["year"],inplace=True)
         
-    #ordena dbtrain por el primer índice y luego por el segundo
+    # order dbtrain by the first index and then by the second
     dbtrain.sort_index(level=[0,1],inplace=True)
 
-    #selecciona los datos de test como los que no están en train
+    # select the test data as the data that is not in train
     dbtest=db.drop(dbtrain.index)
-    #ordena dbtest por el primer índice y luego por el segundo
+    # order dbtest by the first index and then by the second
     dbtest.sort_index(level=[0,1],inplace=True)
 
-    #separa los datos de entrenamiento en X y Y
+    # split the training data into X and Y
     Xtrain=dbtrain.iloc[:,:-1]
     Ytrain=dbtrain.iloc[:,-1]
 
-    #separa los datos de test en X y Y
+    # split the test data into X and Y
     Xtest=dbtest.iloc[:,:-1]
     Ytest=dbtest.iloc[:,-1]
 
-    #realiza PCA si dopca=True
+    # apply PCA if dopca=True
     if dopca:
         pca = skdecomp.PCA(n_components=ncomp)
         pca.fit(Xtrain)
         Xtrain=pca.transform(Xtrain)
         Xtest=pca.transform(Xtest)
 
-    #haz un match case para seleccionar el clasificador
+    # select the classifier according to clasif
     match clasif:
         case "lda":
             clf=sklda.LinearDiscriminantAnalysis()
 
-            #entrena el clasificador
+            # train the classifier
             clf.fit(Xtrain,Ytrain)
 
-            #aplica el clasificador a los datos de entrenamiento y de test
+            # apply the classifier to the training and test data
             Ytrain_pred=clf.predict(Xtrain)
             Ytest_pred=clf.predict(Xtest)
 
         case "qda":
             clf=sklda.QuadraticDiscriminantAnalysis()
 
-            #entrena el clasificador
+            # train the classifier
             clf.fit(Xtrain,Ytrain)
 
-            #aplica el clasificador a los datos de entrenamiento y de test
+            # apply the classifier to the training and test data
             Ytrain_pred=clf.predict(Xtrain)
             Ytest_pred=clf.predict(Xtest)
+
         case "kriggingfun":
             kr_lambda = isl.KriggingFunctionClassifier(Xtrain.T, alpha, Ytrain)
 
-            #aplica el clasificador a los datos de entrenamiento y de test
+            # apply the classifier to the training and test data
             Ytrain_pred=np.empty(Xtrain.shape[0])
             for i in range(Xtrain.shape[0]):
-                # aplica el clasificador
                 Ytrain_pred[i] = kr_lambda.fun_classifier(Xtrain[i])
             
             Ytest_pred=np.empty(Xtest.shape[0])
             for i in range(Xtest.shape[0]):
-                # aplica el clasificador
                 Ytest_pred[i] = kr_lambda.fun_classifier(Xtest[i])
+
         case "krigginglam":
             kr_lambda = isl.KriggingClassifier(Xtrain.T, alpha, Ytrain)
 
-            #aplica el clasificador a los datos de entrenamiento y de test
+            # apply the classifier to the training and test data
             Ytrain_pred=np.empty(Xtrain.shape[0])
             for i in range(Xtrain.shape[0]):
                 Ytrain_pred[i]= kr_lambda.lambda_classifier(Xtrain[i])
@@ -178,88 +198,92 @@ def process(alphamixedtrain):
                 Ytest_pred[i]= kr_lambda.lambda_classifier(Xtest[i])
             
         case _:
-            print("clasificador no válido")
+            # if the clasifier is not valid, print an error message
+            print("unvalid classifier")
 
-    #calcula la precisión balanceada de los datos de entrenamiento y de test
+    # get the balanced accuracy of the training and test data
     tracc=skmetrics.balanced_accuracy_score(Ytrain,Ytrain_pred)
     teacc=skmetrics.balanced_accuracy_score(Ytest,Ytest_pred)
 
-    # print("Alpha: ",alpha)
-    # print("Precisión balanceada de entrenamiento: ",tracc)
-    # print("Precisión balanceada de test: ",teacc)
-    #añade la precisión de entrenamiento y de test a las listas
+    # return the training and test accuracy
     return (tracc,teacc)
 
-#clase main
+# main class
 if __name__ == "__main__":
-    # calcula el número de combinaciones de clasificador, alpha y fracción de datos de entrenamiento
-    ncomb = len(clasifs)*len(alphas)*len(mixedtrains)
-    # crea un contador a 0 para saber cuántas combinaciones se han hecho
-    cont = 0
+    # to calculate the number of combinations, the number of non-krigging classifiers is needed
+    # create a list with the selected krigging classifiers
+    kriggingclasifs=list({"kriggingfun","krigginglam"}.intersection(set(clasifs)))
+    # calculate the number of combinations of classifier, alpha and training data fraction
+    ncomb = len(kriggingclasifs)*len(alphasorig)*len(mixedtrains)+len(set(clasifs).difference(kriggingclasifs))*len(mixedtrains)
+    # create a counter to know how many combinations have been done
+    count = 0
     for clasif in clasifs:
-        #resetea las listas
-        # crea una lista vacía para la precisión media de test y otra para la precisión media de entrenamiento
+        # reset the lists
         testacc=[]
         trainacc=[]
-
-        # crea una lista vacía para el valor máximo de la precisión de test y otra para el valor máximo de la precisión de entrenamiento
         testaccmax=[]
         trainaccmax=[]
-
-        # crea una lista vacía para el valor mínimo de la precisión de test y otra para el valor mínimo de la precisión de entrenamiento
         testaccmin=[]
         trainaccmin=[]
-        #si el clasificador no es krigging, alpha se pone a 0
+
+        # of the classifier is not krigging, set alpha to 0
         if clasif!="kriggingfun" and clasif!="krigginglam":
             alphas=[0]
+        else:
+            alphas=alphasorig
         for mixedtrain in mixedtrains:
             for alpha in alphas:
-                print(cont,"/",ncomb)
-                cont+=1
-                # crea una lista vacía para la precisión de test y otra para la precisión de entrenamiento
+                print(count,"/",ncomb)
+                count+=1
+                # create an empty list for the test accuracy and another for the training accuracy
                 testaccalpha=[]
                 trainaccalpha=[]
-                # crea una pool de procesos
+
+                # create a process pool
                 pool = mp.Pool(mp.cpu_count())
 
-                #crea una lista con las tuplas (mixedtrain,alpha) para cada repetición
+                #create an empty list for the tuples (alpha,mixedtrain,clasif) for each repetition
                 alphal=[(alpha,mixedtrain,clasif)]*nrep
+
+                # apply the process function to the list of tuples
                 out = tqdm.tqdm(pool.imap(process, alphal), total=nrep)
-                #separa out en trainaccalpha,testaccalpha teniendo en cuenta que out es una lista de tuplas (trainacc,testacc)
+
+                # split out into trainaccalpha,testaccalpha taking into account that out is a list of tuples (trainacc,testacc)
                 for trainaccout,testaccout in out:
                     trainaccalpha.append(trainaccout)
                     testaccalpha.append(testaccout)
-                #calcula la precisión media de entrenamiento y de test
+                
+                # calculate the mean training and test accuracy
                 tracc=np.mean(trainaccalpha)
                 teacc=np.mean(testaccalpha)
-                #añade la precisión media de entrenamiento y de test a las listas
+                
+                # add the mean training and test accuracy to the lists
                 trainacc.append(tracc)
                 testacc.append(teacc)
 
-                #añade el valor máximo de la precisión de test a la lista
+                # add the maximum training and test accuracy to the lists
                 testaccmax.append(max(testaccalpha))
                 trainaccmax.append(max(trainaccalpha))
 
-                #añade el valor mínimo de la precisión de test a la lista
+                # add the minimum training and test accuracy to the lists
                 testaccmin.append(min(testaccalpha))
                 trainaccmin.append(min(trainaccalpha))
 
-        # resta al valor máximo y al mínimo el valor medio para obtener el error
+        # substract the mean value from the maximum and minimum values to obtain the error
         testaccmaxdif=np.array(testaccmax)-np.array(testacc)
         trainaccmaxdif=np.array(trainaccmax)-np.array(trainacc)
         testaccmindif=np.array(testaccmin)-np.array(testacc)
         trainaccmindif=np.array(trainaccmin)-np.array(trainacc)
-        # combina los valores máximos y mínimos en un array con la forma (2,N)
+
+        # combine the maximum and minimum values into an array with shape (2,N)
         testaccerr=np.array([testaccmindif,testaccmaxdif])
         trainaccerr=np.array([trainaccmindif,trainaccmaxdif])
 
-        #convierte los errores en valores absolutos
+        # get the absolute values of the errors
         testaccerr=np.abs(testaccerr)
         trainaccerr=np.abs(trainaccerr)
 
-        #crea una gráfica con los valores de alpha y la precisión balanceada
-        # plt.plot(alphas,trainacc,label='train')
-        # plt.plot(alphas,testacc,label='test')
+        # plot the balanced accuracy vs the fraction of data used for training
         plt.errorbar(mixedtrains,trainacc,yerr=trainaccerr,label=clasif+' train',capsize=5,fmt='o-')
         plt.errorbar(mixedtrains,testacc,yerr=testaccerr,label=clasif+' test',capsize=5, fmt='o-')
     plt.xlabel('fraction of data used for train')

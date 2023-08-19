@@ -8,6 +8,19 @@ Contains tools that are useful to various task, not limited to a single part of 
 Given a list of directories to be inputed as folders=["dir1","dir2",etc], each inputed directory and each of its subdirectories will be scaned in search of png images. Every image found will be added to a PDF file per subfolder, as well as a general PDF file per main directory provided. The PDF files will be saved in each of the subdirectories and in the main directory respectively. The name of the PDF files will be the same as the name of the folder they are in.
 
 ### plotTDVMonthColor.py
-NOTE: this script wont work for the moment, its references are temporarily broken. It will be fixed soon.
-
 Given a list of available years and a save directory path, plots TDV data and colors it according to manual clasification.
+
+## LTP (folder)
+Contains scripts related to LTP and ZIM probes.
+
+### ZIMMulticlasifierAccPlot.py
+Configurable script that tests accuracy of multiple configurable classifiers over a preprocessed ZIM probe database. Available clasifiers include linear and quadratic discriminant analysis from sklearn and krigging based classifiers from isadoralib, developped under this project. The script generates a plot with the measured accuracies versus the fraction of data that was used for training.
+
+## TDV (folder)
+Contains scripts related to TDV and dendrometers.
+
+## db (folder)
+Contains preprocesed data used by scripts.
+
+### ZIMdb14151619.csv
+Database containing proprocesed ZIM data from years 2014, 2015, 2016 and 2019. Each row contains data for one day and sensor. Contains sensor name and date (labeled "Fecha") to be used as indexes, a series of numbered columns containing relevant data for classification and an Y column containing manual clasification for that day and sensor. Relevant data includes 80 samples of ZIM sensor and 4 samples of each meteorological data, which includes net radiation, humidity and temperature, all measured during daytime. 
