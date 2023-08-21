@@ -4,22 +4,22 @@ import scipy.sparse as sp
 import qpsolvers as qp
 
 def cargaDatos(year,sufix):
-    '''Carga los datos de un año almacenados en los archivos [year][sufix].csv y validacion[year].csv y devuelve una tupla (tdv,ltp,meteo,estado hídrico).'''
-    # Carga de datos
-    df = pd.read_csv("rawMinutales"+year+sufix+".csv",na_values='.')
-    df.loc[:,"Fecha"]=pd.to_datetime(df.loc[:,"Fecha"])# Fecha como datetime
+    '''Load data corresponding to a year stored in the files [year][sufix].csv and validacion[year].csv and returns a tuple (tdv,ltp,meteo,hidric stress level).'''
+    # Load data
+    df = pd.read_csv("..\\rawMinutales"+year+sufix+".csv",na_values='.')
+    df.loc[:,"Fecha"]=pd.to_datetime(df.loc[:,"Fecha"])# Date as datetime
     df=df.drop_duplicates(subset="Fecha")
     df.dropna(subset = ["Fecha"], inplace=True)
     df=df.set_index("Fecha")
     df=df.apply(pd.to_numeric, errors='coerce')
 
-    # separa dfT en tdv y ltp en función del principio del nombre de cada columna y guarda el resto en meteo
+    # split dfT into tdv and ltp depending on the beginning of the name of each column and save the rest in meteo
     tdv = df.loc[:,df.columns.str.startswith('TDV')]
     ltp = df.loc[:,df.columns.str.startswith('LTP')]
     meteo = df.drop(df.columns[df.columns.str.startswith('TDV')], axis=1)
     meteo = meteo.drop(meteo.columns[meteo.columns.str.startswith('LTP')], axis=1)
 
-    # Carga datos de validacion
+    # Load validation data
     valdatapd=pd.read_csv("validacion"+year+".csv")
     valdatapd.dropna(inplace=True)
     valdatapd['Fecha'] = pd.to_datetime(valdatapd['Fecha'])
@@ -28,22 +28,22 @@ def cargaDatos(year,sufix):
     return (tdv,ltp,meteo,valdatapd)
 
 def cargaDatosTDV(year,sufix):
-    '''Carga los datos de un año almacenados en los archivos [year][sufix].csv y validacion[year].csv y devuelve una tupla (tdv,ltp,meteo,estado hídrico).'''
-    # Carga de datos
+    '''Load data corresponding to a year stored in the files [year][sufix].csv and validacion[year].csv and returns a tuple (tdv,ltp,meteo,hidric stress level).'''
+    # Load data
     df = pd.read_csv("rawMinutales"+year+sufix+".csv",na_values='.')
-    df.loc[:,"Fecha"]=pd.to_datetime(df.loc[:,"Fecha"])# Fecha como datetime
+    df.loc[:,"Fecha"]=pd.to_datetime(df.loc[:,"Fecha"])# Date as datetime
     df=df.drop_duplicates(subset="Fecha")
     df.dropna(subset = ["Fecha"], inplace=True)
     df=df.set_index("Fecha")
     df=df.apply(pd.to_numeric, errors='coerce')
 
-    # separa dfT en tdv y ltp en función del principio del nombre de cada columna y guarda el resto en meteo
+    # split dfT into tdv and ltp depending on the beginning of the name of each column and save the rest in meteo
     tdv = df.loc[:,df.columns.str.startswith('TDV')]
     ltp = df.loc[:,df.columns.str.startswith('LTP')]
     meteo = df.drop(df.columns[df.columns.str.startswith('TDV')], axis=1)
     meteo = meteo.drop(meteo.columns[meteo.columns.str.startswith('LTP')], axis=1)
 
-    # Carga datos de validacion
+    # Load validation data
     valdatapd=pd.read_csv("validacion"+year+"TDV.csv")
     #valdatapd.dropna(inplace=True)
     valdatapd['Fecha'] = pd.to_datetime(valdatapd['Fecha'])
@@ -52,7 +52,7 @@ def cargaDatosTDV(year,sufix):
     return (tdv,ltp,meteo,valdatapd)
 
 def datosADataframe(ltp:pd.DataFrame,meteo:pd.DataFrame,valdatapd:pd.DataFrame) -> tuple[pd.DataFrame,pd.Series]:
-    '''Almacena los datos de ltp y meteo en un dataframe x y los de valdata en una serie y con la forma adecuada para convertirlos a arrays de numpy para scikit o bien para continuar su procesado. X e Y no se reducen a columnas comunes.'''
+    '''Save ltp and meteo data in a dataframe x and valdata in a series y with the proper shape to convert them to numpy arrays for scikit or to continue processing them. X and Y are not reduced to common columns.'''
     ltp['Dia'] = pd.to_datetime(ltp.index).date
     ltp['Delta'] = pd.to_datetime(ltp.index) - pd.to_datetime(ltp.index).normalize()
 
@@ -83,7 +83,7 @@ def datosADataframe(ltp:pd.DataFrame,meteo:pd.DataFrame,valdatapd:pd.DataFrame) 
 #KRIGGING
 
 class KriggingClassifier:
-    '''Objeto para clasificación mediante Krigging. La matriz Xtrain contiene la base de datos de entrenamiento, con una fila por cada caractrística y una columna por cada muestra. El vector ytrain contiene las clases de cada muestra.'''
+    '''Krigging classifier object. The matrix Xtrain contains the training database, with a row for each feature and a column for each sample. The vector ytrain contains the classes of each sample.'''
     # Constructor
     def __init__(self, Xtrain, alpha, ytrain):
         self.Xtrain = Xtrain
@@ -93,46 +93,44 @@ class KriggingClassifier:
         else:
             self.ytrain = np.zeros(Xtrain.shape[0])
         self.num_classes = np.unique(ytrain).shape[0]
-        # obtiene los indices de las clases en el conjunto de entrenamiento
+        # get the indices of the classes in the training set
         self.indices = [np.where(self.ytrain == i)[0] for i in range(len(np.unique(self.ytrain)))]
         
         self.update_matrices(Xtrain, alpha)
 
     def update_matrices(self, Xtrain, alpha):
-        '''Actualiza las matrices P, q, G, h y A para los datos de entrenamiento Xtrain y el parámetro alpha.'''
-        # Calcula la matriz P definida como una matriz cuadrada de tamaño 2*N+1 con una matriz diagonal de tamaño N y valor 2 en la esquina superior izquierda
+        '''Updates the matrices P, q, G, h and A for the training data Xtrain and the parameter alpha.'''
+        # Get P matrix as a square matrix of size 2*N+1 with a diagonal matrix of size N and value 2 in the upper left corner
         self.P = np.zeros([2*Xtrain.shape[1], 2*Xtrain.shape[1]])
         self.P[:Xtrain.shape[1], :Xtrain.shape[1]] = np.eye(Xtrain.shape[1])*2
-        # Convierte P en una matriz dispersa
+        # Matrix P as a sparse matrix
         self.P = sp.csc_matrix(self.P)
 
-        # Calcula el vector q de tamaño 2*N+1 con valores alpha en los N últimos elementos
+        # Get q vector of size 2*N+1 with alpha values in the last N elements
         self.q = np.zeros([2*Xtrain.shape[1]])
         self.q[Xtrain.shape[1]:2*Xtrain.shape[1]] = alpha
 
-        # Calcula la matriz G de tamaño 2*N+1 x 2*N con cuatro matrices identidad de tamaño N y una columna de ceros. Todas las matrices identidad tienen signo negativo excepto la esquina superior derecha
+        # Get G matrix of size 2*N+1 x 2*N with four identity matrices of size N and a column of zeros. All identity matrices have negative sign except the upper right corner
         self.G = np.zeros([2*Xtrain.shape[1], 2*Xtrain.shape[1]])
         self.G[:Xtrain.shape[1], :Xtrain.shape[1]] = np.eye(Xtrain.shape[1])
         self.G[Xtrain.shape[1]:2*Xtrain.shape[1], Xtrain.shape[1]:2*Xtrain.shape[1]] = -np.eye(Xtrain.shape[1])
         self.G[Xtrain.shape[1]:2*Xtrain.shape[1], :Xtrain.shape[1]] = -np.eye(Xtrain.shape[1])
         self.G[:Xtrain.shape[1], Xtrain.shape[1]:2*Xtrain.shape[1]] = -np.eye(Xtrain.shape[1])
-
-        # Convierte G en una matriz dispersa
+        # G as a sparse matrix
         self.G = sp.csc_matrix(self.G)
 
-        # Calcula el vector h de tamaño 2*N con valores cero
+        # Get h vector of size 2*N with zero values
         self.h = np.zeros([2*Xtrain.shape[1]])
 
-        # Calcula la matriz A que contiene la matriz de datos de entrenamiento y N+1 columnas de 0 en la parte superior y una fila de 0 y un 1 en la parte inferior
-
+        # Get A matrix of size M+1 x 2*N with the training data matrix and a row of zeros and a 1 in the last column
         self.A = np.zeros([Xtrain.shape[0]+1, 2*Xtrain.shape[1]])
         self.A[:Xtrain.shape[0], :Xtrain.shape[1]] = Xtrain
         self.A[Xtrain.shape[0], :Xtrain.shape[1]] = 1
-        # Convierte A en una matriz dispersa
+        # A as a sparse matrix
         self.A = sp.csc_matrix(self.A)
 
     def update_ytrain(self, ytrain):
-        '''Actualiza el vector ytrain de los datos de entrenamiento.'''
+        '''Updates the vector ytrain of the training data.'''
         self.ytrain = ytrain
         self.num_classes = np.unique(ytrain).shape[0]
         self.indices = [np.where(self.ytrain == i)[0] for i in range(len(np.unique(self.ytrain)))]
@@ -140,106 +138,101 @@ class KriggingClassifier:
         
 
     def apply(self,x):
-        '''Aplica el clasificador a un vector de características x. Devuelve el valor de la función objetivo y el vector de lambdas.'''
-        # Crea un vector de características ampliado con un 1
+        '''Applies the classifier to a feature vector x. Returns the value of the objective function and the vector of lambdas.'''
+        # Create an extended feature vector with a 1
         b = np.hstack([x, 1])
 
-        # Calcula el T que minimiza la función Qp usando OSQP
+        # Get T that minimizes the QP function using OSQP
         T = qp.solve_qp(self.P, self.q.T, self.G, self.h, self.A, b, solver='osqp')
 
         P= self.P.toarray()
 
-        #comprueba si T es none
+        # check if T is None
         if T is None:
-            #fija el valor de la función objetivo a infinito
+            # set the value of the objective function to infinity
             f = np.inf
-            #fija el vector de lambdas de los datos de entrenamiento a None
+            # set the vector of lambdas of the training data to None
             lambda_i = None
         else:
-            # Obtiene el valor de la función objetivo
+            # get the value of the objective function
             f = 0.5*np.dot(T.T, np.dot(P, T)) + np.dot(self.q, T)
 
-            # Obtiene el vector de lambdas de los datos de entrenamiento
+            # Get the vector of lambdas of the training data
             lambda_i = T[:self.Xtrain.shape[1]]
             t_i = T[self.Xtrain.shape[1]:]
         return (f, lambda_i)
     
     def lambda_classifier(self, x):
-        '''Aplica el clasificador a un vector de características x. Devuelve la clase predicha en función del vector de lambdas.'''
-        # Aplica el clasificador a x
+        '''Apply the classifier to a feature vector x. Returns the predicted class based on the lambda vector. If no class can be predicted, returns a class greater than the number of training classes.'''
+        # Apply the classifier to x
         y_pred_lambda = self.apply(x)[1]
-        #si el valor de lambda es None
+        # if lambda is None:
         if y_pred_lambda is None:
-            # asigna una clase mayor que el número de clases
+            # assign a class greater than the number of classes
             y_pred_lambda = self.num_classes
         else:
-            # separa los valores de lambda por clases
+            # split the lambda values by classes
             y_pred_lambda = [y_pred_lambda[self.indices[j]] for j in range(len(np.unique(self.ytrain)))]
-            # calcula la suma de los valores de lambda por clases
+            # get the sum of the lambda values by classes
             y_pred_lambda = [np.sum(y_pred_lambda[j]) for j in range(len(np.unique(self.ytrain)))]
-            # selecciona la clase con mayor valor de lambda
+            # select the class with the greatest lambda value
             y_pred_lambda = np.argmax(y_pred_lambda)
         return y_pred_lambda
 
     def minTraining(self):
-        '''Calcula el menor número de muestras de entrenamiento que se pueden usar para entrenar el clasificador'''
-        # Calcula el número de características de los datos de entrenamiento
+        '''Calculates the minimum number of training samples that can be used to train the classifier. Testing showed it is not useful and will be deprecated.'''
+        # get the number of features from the training data
         n = self.Xtrain.shape[1]
 
-        # Calcula el número de clases de los datos de entrenamiento
+        # get the number of classes from the training data
         nclases = np.unique(self.ytrain).shape[0]
 
-        # Por cada clase, calcula el número de muestras de entrenamiento
+        # For each class, calculate the number of training samples
         ntrain = np.zeros(nclases)
         for i in range(nclases):
             ntrain[i] = np.where(self.ytrain == i)[0].shape[0]
         
-        # calcula el número de muestras de entrenamiento
+        # get the number of training samples
         m = self.Xtrain.shape[0]
 
 
-        print("n+1/m: ",n+1,"/",m)
-        print("ntrain: ",ntrain)
-        print("P: ",self.P.shape)
-        print("q: ",self.q.shape)
-        print("G: ",self.G.shape)
-        print("h: ",self.h.shape)
-        print("A: ",self.A.shape)
+        print("minTraining is not useful and will be deprecated. Use of this function is not necessary as the classifier should work by itself.")
 
 class KriggingFunctionClassifier:
-    '''Clasificador Krigging basado en el valor de la función objetivo.'''
+    '''Krigging classifier object based on the value of the objective function. Krigging classifier object. The matrix Xtrain contains the training database, with a row for each feature and a column for each sample. The vector ytrain contains the classes of each sample.'''
+    
     def __init__(self, Xtrain, alpha, ytrain=None):
-        '''Constructor de la clase. Recibe los datos de entrenamiento y el valor de alpha.'''
-        # Guarda los datos de entrenamiento
+        '''Class constructor. Receives the training data and the value of alpha.'''
+        # Store the training data
         self.Xtrain = Xtrain
         if ytrain is None:
             self.ytrain = np.zeros(Xtrain.shape[0])
-        # Guarda el valor de alpha
+        # Store alpha value
         self.alpha = alpha
-        # Actualiza el vector ytrain de los datos de entrenamiento
+        # Update ytrain vector
         self.update_ytrain(ytrain)
 
     def update_ytrain(self, ytrain):
-        '''Actualiza el vector ytrain de los datos de entrenamiento.'''
+        '''Updates ytrain vector with the training data classes.'''
         self.ytrain = ytrain
         self.num_classes = np.unique(ytrain).shape[0]
 
         self.kriggings = []
-        # crea un clasificador de krigging para cada clase
+        # create a krigging classifier for each class
         for i in range(self.num_classes):
-            # obtiene los datos de entrenamiento de la clase i
+            # get the training data for class i
             Xtrain_i = self.Xtrain[:,np.where(self.ytrain == i)[0]]
             ytrain_i = self.ytrain[np.where(self.ytrain == i)[0]]
-            # crea un clasificador de krigging en la lista de clasificadores
+            # create a krigging classifier in the list of classifiers
             self.kriggings.append(KriggingClassifier(Xtrain_i, self.alpha, ytrain_i))
         
     def fun_classifier(self,x):
-        '''Aplica el clasificador a un vector de características x. Devuelve la clase predicha en función del valor de la función objetivo.'''
-        # Aplica el clasificador a x
+        '''Applies the classifier to a feature vector x. Returns the predicted class based on the value of the objective function.'''
+        # apply the classifier to x
         y_pred_fun = [self.kriggings[i].apply(x)[0] for i in range(self.num_classes)]
-        # selecciona la clase con menor valor de la función objetivo
+        # select the class with the lowest value of the objective function
         y_pred_fun = np.argmin(y_pred_fun)
-        #si y_pred_fun es infinito, asigna una clase mayor que el número de clases
+        # if y_pred_fun is infinite, assign a class greater than the number of classes
         if y_pred_fun == np.inf:
             y_pred_fun = self.num_classes
         return y_pred_fun
