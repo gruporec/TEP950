@@ -4,7 +4,6 @@ import numpy as np
 import sklearn.discriminant_analysis as sklda
 import sklearn.metrics as skmetrics
 import sklearn.decomposition as skdecomp
-import isadoralib as isl
 import seaborn as sns
 import multiprocessing as mp
 import tqdm
@@ -17,10 +16,13 @@ import isadoralib as isl
 
 sns.set(rc={'figure.figsize':(11.7,8.27)})
 
+# #use agg when intended for saving the image and not for showing it
+# plt.switch_backend('agg')
+
 # ---CONFIGURATION---
 
 #dataset file path
-dataset="../db/ZIMdb14151619.csv"
+dataset=os.path.dirname(os.path.dirname(__file__))+"\\db\\ZIMdb14151619.csv"
 
 # select training data mode: by year (mixed=False) or mixed (mixed=True)
 mixed=True
@@ -289,5 +291,10 @@ if __name__ == "__main__":
     plt.xlabel('fraction of data used for train')
     plt.ylabel('balanced accuracy')
     plt.legend()
+
+    # comment if using agg
     plt.show()
+
+    # # save the plot
+    # plt.savefig(os.path.dirname(os.path.dirname(__file__))+"\\ZIMMulticlasifierAccPlot.png")
 
