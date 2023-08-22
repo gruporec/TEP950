@@ -16,6 +16,9 @@ Contains scripts related to LTP and ZIM probes.
 ### ZIMMulticlasifierAccPlot.py
 Configurable script that tests accuracy of multiple configurable classifiers over a preprocessed ZIM probe database. Available clasifiers include linear and quadratic discriminant analysis from sklearn and krigging based classifiers from isadoralib, developped under this project. The script generates a plot with the measured accuracies versus the fraction of data that was used for training.
 
+### ZIMsaveDataset.py
+This script generates a preprocessed database to be used by **ZIMMulticlasifierAccPlot.py**. The applied preprocess is intended for ZIM probes. Some parameters can be adjusted via variables in the first lines of the script.
+
 ## TDV (folder)
 Contains scripts related to TDV and dendrometers.
 
