@@ -320,7 +320,6 @@ for alph in alphas:
     for year_data in year_datas:
         timepreprostart=tm.time()
         print(year_data)
-        saveFolder="ignore/figures/PCALDAMETEOresults/"+year_train+"-"+year_data+"-"+sufix+"/"
 
         # Carga de datos de predicción
         tdvP,ltpP,meteoP,valdatapd=isl.cargaDatos(year_data,sufix)
