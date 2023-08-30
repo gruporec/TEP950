@@ -14,8 +14,8 @@ import sklearn.decomposition as skdecomp
 
 # add the path to the lib folder to the system path. This allows to import the library, and makes it so that the script runs from the main folder, at least when running using VSCode
 sys.path.append(os.path.join(os.path.dirname(__file__), '..', 'lib'))
-# import the isadoralib library. Some IDEs may mark it as a missing file (tested on VSCode), but it will still work thanks to the previous line.
-import isadoralib as isl
+# import the isadoralib library. Some IDEs may mark it as a missing file (tested on VSCode), but it will still work thanks to the previous line. Added a type: ignore comment to avoid the warning
+import isadoralib as isl # type: ignore
 
 matplotlib.use("Agg")
 
