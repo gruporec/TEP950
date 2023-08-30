@@ -22,6 +22,9 @@ This script generates a preprocessed database to be used by **ZIMMulticlasifierA
 ## TDV (folder)
 Contains scripts related to TDV and dendrometers.
 
+### plotClassifierTests.py
+Plots some useful information about LTP characteristics to be used in the classifiers and saves the plots.
+
 ## db (folder)
 Contains preprocesed data used by scripts.
 
