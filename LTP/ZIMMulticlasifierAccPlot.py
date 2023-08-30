@@ -51,7 +51,10 @@ ncomp=13
 clasifs=["lda","qda","kriggingfun","krigginglam"]
 
 # alpha for krigging 
-alphasorig=[1]
+alphaskrigging=[1]
+
+# print the confusion matrix
+printConfusionMatrix=True
 
 # ---END OF CONFIGURATION---
 
@@ -207,8 +210,16 @@ def process(alphamixedtrain):
     tracc=skmetrics.balanced_accuracy_score(Ytrain,Ytrain_pred)
     teacc=skmetrics.balanced_accuracy_score(Ytest,Ytest_pred)
 
-    # return the training and test accuracy
-    return (tracc,teacc)
+    # if printConfusionMatrix=True, calculate the confusion matrix to return it
+    if printConfusionMatrix:
+        trcm = skmetrics.confusion_matrix(Ytrain,Ytrain_pred)
+        tecm = skmetrics.confusion_matrix(Ytest,Ytest_pred)
+    else:
+        trcm = None
+        tecm = None
+
+    # return the training and test accuracy and confusion matrices
+    return (tracc,teacc,trcm,tecm)
 
 # main class
 if __name__ == "__main__":
@@ -216,7 +227,7 @@ if __name__ == "__main__":
     # create a list with the selected krigging classifiers
     kriggingclasifs=list({"kriggingfun","krigginglam"}.intersection(set(clasifs)))
     # calculate the number of combinations of classifier, alpha and training data fraction
-    ncomb = len(kriggingclasifs)*len(alphasorig)*len(mixedtrains)+len(set(clasifs).difference(kriggingclasifs))*len(mixedtrains)
+    ncomb = len(kriggingclasifs)*len(alphaskrigging)*len(mixedtrains)+len(set(clasifs).difference(kriggingclasifs))*len(mixedtrains)
     # create a counter to know how many combinations have been done
     count = 0
     for clasif in clasifs:
@@ -232,7 +243,7 @@ if __name__ == "__main__":
         if clasif!="kriggingfun" and clasif!="krigginglam":
             alphas=[0]
         else:
-            alphas=alphasorig
+            alphas=alphaskrigging
         for mixedtrain in mixedtrains:
             for alpha in alphas:
                 print(count,"/",ncomb)
@@ -240,6 +251,10 @@ if __name__ == "__main__":
                 # create an empty list for the test accuracy and another for the training accuracy
                 testaccalpha=[]
                 trainaccalpha=[]
+
+                # create another two empty lists for the confusion matrices
+                trcmalpha=[]
+                tecmalpha=[]
 
                 # create a process pool
                 pool = mp.Pool(mp.cpu_count())
@@ -250,10 +265,12 @@ if __name__ == "__main__":
                 # apply the process function to the list of tuples
                 out = tqdm.tqdm(pool.imap(process, alphal), total=nrep)
 
-                # split out into trainaccalpha,testaccalpha taking into account that out is a list of tuples (trainacc,testacc)
-                for trainaccout,testaccout in out:
+                # split out into trainaccalpha, testaccalpha, trcmalpha and tecmalpha taking into account that out is a list of tuples (trainacc,testacc,trcm,tecm)
+                for trainaccout,testaccout,trcmout,tecmout in out:
                     trainaccalpha.append(trainaccout)
                     testaccalpha.append(testaccout)
+                    trcmalpha.append(trcmout)
+                    tecmalpha.append(tecmout)
                 
                 # calculate the mean training and test accuracy
                 tracc=np.mean(trainaccalpha)
@@ -270,6 +287,26 @@ if __name__ == "__main__":
                 # add the minimum training and test accuracy to the lists
                 testaccmin.append(min(testaccalpha))
                 trainaccmin.append(min(trainaccalpha))
+
+                # if printConfusionMatrix=True, calculate the sum of the confusion matrices in trcmalpha and tecmalpha lists
+                if printConfusionMatrix:
+                    trcm=np.sum(trcmalpha,axis=0)
+                    tecm=np.sum(tecmalpha,axis=0)
+                    # print data about the classifier, alpha and fraction of data used for training
+                    print("clasifier:",clasif,", alpha:",alpha,", fraction of data used for training:",mixedtrain)
+                    # print the confusion matrices
+                    print("training confusion matrix:")
+                    print(trcm)
+                    print("test confusion matrix:")
+                    print(tecm)
+                    # print the normalized confusion matrices
+                    print("training normalized confusion matrix:")
+                    print(trcm/np.sum(trcm,axis=1)[:,None])
+                    print("test normalized confusion matrix:")
+                    print(tecm/np.sum(tecm,axis=1)[:,None])
+                    # print the balanced accuracy
+                    print("training balanced accuracy:",tracc)
+                    print("test balanced accuracy:",teacc)
 
         # substract the mean value from the maximum and minimum values to obtain the error
         testaccmaxdif=np.array(testaccmax)-np.array(testacc)
