@@ -112,26 +112,26 @@ for iyear in range(len(years)):
     max_ctend=tdv_5_8_max[ctend!=0]
     # Fill null values with the previous value
     max_ctend=max_ctend.fillna(method='ffill')
-    #cuando no hay valor anterior, rellena con 0
+    # When there is no previous value, fill with 0
     max_ctend=max_ctend.fillna(0)
-    #añade un día a la fecha
+    # Add one day to the date
     max_ctend.index = max_ctend.index + pd.Timedelta(days=1)
-    #calcula la diferencia entre el máximo actual y el máximo en el último cambio de tendencia
+    # Get the difference between the current maximum and the maximum in the last change of trend
     max_ctend_diff=tdv_5_8_max-max_ctend
-    #elimina nan
+    # Remove nan values
     max_ctend_diff=max_ctend_diff.dropna()
 
-    #aplica a valdatapd un desfase de desfase_estres dias
+    # Apply a shift of desfase_estres days to valdatapd
     valdatapd.index = valdatapd.index + pd.Timedelta(days=desfase_estres)
 
-    # convierte los índices de tdv_5_8_max, pk, bk, max_ctend_diff y valdatapd a datetime
+    # Convert the indices of tdv_5_8_max, pk, bk, max_ctend_diff and valdatapd to datetime
     tdv_5_8_max.index = pd.to_datetime(tdv_5_8_max.index)
     pk.index = pd.to_datetime(pk.index)
     bk.index = pd.to_datetime(bk.index)
     max_ctend_diff.index = pd.to_datetime(max_ctend_diff.index)
     valdatapd.index = pd.to_datetime(valdatapd.index)
 
-    # recorta los dataframes tdv_5_8_max, pk, bk, max_ctend_diff y valdatapd para que tengan el mismo tamaño e índices
+    # Slice the dataframes tdv_5_8_max, pk, bk, max_ctend_diff and valdatapd so that they have the same size and indices
     common_index = tdv_5_8_max.index.intersection(pk.index).intersection(bk.index).intersection(max_ctend_diff.index).intersection(valdatapd.index)
     tdv_5_8_max = tdv_5_8_max.loc[common_index]
     pk = pk.loc[common_index]
@@ -139,7 +139,7 @@ for iyear in range(len(years)):
     max_ctend_diff = max_ctend_diff.loc[common_index]
     valdatapd = valdatapd.loc[common_index]
 
-    # recorta también las columnas
+    # Also slice the columns
     common_cols=tdv_5_8_max.columns.intersection(pk.columns).intersection(bk.columns).intersection(max_ctend_diff.columns).intersection(valdatapd.columns)
     tdv_5_8_max = tdv_5_8_max[common_cols]
     pk = pk[common_cols]
@@ -147,164 +147,164 @@ for iyear in range(len(years)):
     max_ctend_diff = max_ctend_diff[common_cols]
     valdatapd = valdatapd[common_cols]
 
-    # stackea todos los dataframes
+    # Stack all the dataframes
     tdv_max_stack=tdv_5_8_max.stack()
     pk_stack=pk.stack()
     bk_stack=bk.stack()
     ctend_stack=max_ctend_diff.stack()
     data_stack=valdatapd.stack()
 
-    # crea un índice de colores para representar los puntos según el valor de valdatapd
+    # Create a color index to represent the points according to the value of valdatapd
     colors=['blue','green','red']
     color_stack=data_stack.apply(lambda x: colors[int(x-1)])
 
-    # crea una figura
+    # create a figure
     plt.figure(figsize=(20,10))
-    # crea un scatter plot con pk en x, tdv_5_8_max en y y colores según valdatapd
+    # Create a scatter plot with pk in x, tdv_5_8_max in y and colors according to valdatapd
     plt.scatter(pk_stack,tdv_max_stack,c=data_stack.apply(lambda x: colors[int(x-1)]),alpha=alfa)
 
-    # añade etiquetas a los ejes
+    # Add labels to the axes
     plt.xlabel('Nº de días desde el último cambio de tendencia')
     plt.ylabel('Máximo actual')
 
-    # añade una leyenda en la que se indique que los colores azul, verde y rojo se corresponden a los valores 1, 2 y 3 de estrés
+    # Add a legend indicating that the colors blue, green and red correspond to the values 1, 2 and 3 of stress
     plt.legend(handles=[mpatches.Patch(color='blue', label='1'),mpatches.Patch(color='green', label='2'),mpatches.Patch(color='red', label='3')])
 
-    # guarda la figura
+    # Save the figure
     plt.savefig(save_folder+'tdv_max_vs_pk.png')
 
-    # cierra la figura
+    # Close the figure
     plt.close()
 
-    # crea una figura
+    # Create a figure
     plt.figure(figsize=(20,10))
 
-    # crea un scatter plot con bk en x, tdv_5_8_max en y y colores según valdatapd
+    # Create a scatter plot with bk in x, tdv_5_8_max in y and colors according to valdatapd
     plt.scatter(bk_stack,tdv_max_stack,c=data_stack.apply(lambda x: colors[int(x-1)]),alpha=alfa)
 
-    #añade etiquetas a los ejes
+    # Add labels to the axes
     plt.xlabel('Valor decimal del binario de tendencias')
     plt.ylabel('Máximo actual')
 
-    # añade una leyenda en la que se indique que los colores azul, verde y rojo se corresponden a los valores 1, 2 y 3 de estrés
+    # Add a legend indicating that the colors blue, green and red correspond to the values 1, 2 and 3 of stress
     plt.legend(handles=[mpatches.Patch(color='blue', label='1'),mpatches.Patch(color='green', label='2'),mpatches.Patch(color='red', label='3')])
-    # guarda la figura
+    # Save the figure
     plt.savefig(save_folder+'tdv_max_vs_bk.png')
 
-    # cierra la figura
+    # Close the figure
     plt.close()
 
-    # crea una figura
+    # Create a figure
     plt.figure(figsize=(20,10))
 
-    # crea un scatter plot con pk en x, ctend en y y colores según valdatapd
+    # Create a scatter plot with pk in x, ctend in y and colors according to valdatapd
     plt.scatter(pk_stack,ctend_stack,c=data_stack.apply(lambda x: colors[int(x-1)]),alpha=alfa)
 
-    # añade etiquetas a los ejes
+    # Add labels to the axes
     plt.xlabel('Nº de días desde el último cambio de tendencia')
     plt.ylabel('Diferencia entre el máximo actual y el máximo en el último cambio de tendencia')
 
-    # añade una leyenda en la que se indique que los colores azul, verde y rojo se corresponden a los valores 1, 2 y 3 de estrés
+    # Add a legend indicating that the colors blue, green and red correspond to the values 1, 2 and 3 of stress
     plt.legend(handles=[mpatches.Patch(color='blue', label='1'),mpatches.Patch(color='green', label='2'),mpatches.Patch(color='red', label='3')])
-    # guarda la figura
+    # Save the figure
     plt.savefig(save_folder+'ctend_vs_pk.png')
 
-    # cierra la figura
+    # Close the figure
     plt.close()
 
-    # crea una figura
+    # Create a figure
     plt.figure(figsize=(20,10))
 
-    # crea un scatter plot con bk en x, ctend en y y colores según valdatapd
+    # Create a scatter plot with bk in x, ctend in y and colors according to valdatapd
     plt.scatter(bk_stack,ctend_stack,c=data_stack.apply(lambda x: colors[int(x-1)]),alpha=alfa)
 
-    # añade etiquetas a los ejes
+    # Add labels to the axes
     plt.xlabel('Valor decimal del binario de tendencias')
     plt.ylabel('Diferencia entre el máximo actual y el máximo en el último cambio de tendencia')
 
-    # añade una leyenda en la que se indique que los colores azul, verde y rojo se corresponden a los valores 1, 2 y 3 de estrés
+    # Add a legend indicating that the colors blue, green and red correspond to the values 1, 2 and 3 of stress
     plt.legend(handles=[mpatches.Patch(color='blue', label='1'),mpatches.Patch(color='green', label='2'),mpatches.Patch(color='red', label='3')])
-    # guarda la figura
+    # Save the figure
     plt.savefig(save_folder+'ctend_vs_bk.png')
 
-    # cierra la figura
+    # Close the figure
     plt.close()
 
-    # obtiene el valor máximo de tdv_max_stack
+    # Get the maximum value of tdv_max_stack
     tdv_max_max=tdv_max_stack.max()
-    # obtiene el valor máximo de ctend_stack
+    # Get the maximum value of ctend_stack
     ctend_max=ctend_stack.max()
-    # obtiene el valor mínimo de tdv_max_stack
+    # Get the minimum value of tdv_max_stack
     tdv_max_min=tdv_max_stack.min()
-    # obtiene el valor mínimo de ctend_stack
+    # Get the minimum value of ctend_stack
     ctend_min=ctend_stack.min()
-    # obtiene el valor mínimo de pk_stack
+    # Get the minimum value of pk_stack
     pk_min=pk_stack.min()
 
-    # si no existe una subcarpeta de nombre pk en la carpeta de resultados, la crea
+    # If a subfolder named pk doesn't exist in the results folder, create it
     if not os.path.exists(save_folder+'pk/'):
         os.makedirs(save_folder+'pk/')
 
-    # por cada valor único de pk
+    # For each unique value of pk
     for pk_value in pk_stack.unique():
-        #obtiene los índices de los valores de pk que son iguales a pk_value
+        # Get the indices of the values of pk that are equal to pk_value
         pk_index=pk_stack[pk_stack==pk_value].index
-        # crea una figura
+        # Create a figure
         plt.figure(figsize=(20,10))
-        # crea un scatter plot con tdv_5_8_max en x, ctend en y y colores según valdatapd
+        # Create a scatter plot with tdv_5_8_max in x, ctend in y and colors according to valdatapd
         plt.scatter(tdv_max_stack[pk_index],ctend_stack[pk_index],c=data_stack[pk_index].apply(lambda x: colors[int(x-1)]),alpha=alfa)
-        # añade etiquetas a los ejes
+        # Add labels to the axes
         plt.xlabel('Máximo actual')
         plt.ylabel('Diferencia entre el máximo actual y el máximo en el último cambio de tendencia')
-        # limita los ejes al valor máximo y mínimo de tdv_max_stack y ctend_stack añadiendo un 10% de margen
+        # Limit the axes to the maximum and minimum value of tdv_max_stack and ctend_stack adding a 10% margin
         plt.xlim(tdv_max_min-(tdv_max_max-tdv_max_min)*0.1,tdv_max_max+(tdv_max_max-tdv_max_min)*0.1)
         plt.ylim(ctend_min-(ctend_max-ctend_min)*0.1,ctend_max+(ctend_max-ctend_min)*0.1)
-        # añade un título a la figura
+        # Add a title to the figure
         plt.title('Nº de días desde el último cambio de tendencia: '+str(pk_value))
-        # añade una leyenda en la que se indique que los colores azul, verde y rojo se corresponden a los valores 1, 2 y 3 de estrés
+        # Add a legend indicating that the colors blue, green and red correspond to the values 1, 2 and 3 of stress
         plt.legend(handles=[mpatches.Patch(color='blue', label='1'),mpatches.Patch(color='green', label='2'),mpatches.Patch(color='red', label='3')])
-        # guarda la figura
+        # Save the figure
         plt.savefig(save_folder+'pk/'+str(pk_value-pk_min)+'- pk '+str(pk_value)+'.png')
-        # cierra la figura
+        # Close the figure
         plt.close()
 
-    # si no existe una subcarpeta de nombre bk en la carpeta de resultados, la crea
+    # If a subfolder named bk doesn't exist in the results folder, create it
     if not os.path.exists(save_folder+'bk/'):
         os.makedirs(save_folder+'bk/')
 
-    # por cada valor único de bk
+    # For each unique value of bk
     for bk_value in bk_stack.unique():
-        #obtiene los índices de los valores de bk que son iguales a bk_value
+        # Get the indices of the values of bk that are equal to bk_value
         bk_index=bk_stack[bk_stack==bk_value].index
-        # crea una figura
+        # Create a figure
         plt.figure(figsize=(20,10))
-        # crea un scatter plot con tdv_5_8_max en x, ctend en y y colores según valdatapd
+        # Create a scatter plot with tdv_5_8_max in x, ctend in y and colors according to valdatapd
         plt.scatter(tdv_max_stack[bk_index],ctend_stack[bk_index],c=data_stack[bk_index].apply(lambda x: colors[int(x-1)]),alpha=alfa)
-        # añade etiquetas a los ejes
+        # Add labels to the axes
         plt.xlabel('Máximo actual')
         plt.ylabel('Diferencia entre el máximo actual y el máximo en el último cambio de tendencia')
-        # limita los ejes al valor máximo y mínimo de tdv_max_stack y ctend_stack añadiendo un 10% de margen
+        # Limit the axes to the maximum and minimum value of tdv_max_stack and ctend_stack adding a 10% margin
         plt.xlim(tdv_max_min-(tdv_max_max-tdv_max_min)*0.1,tdv_max_max+(tdv_max_max-tdv_max_min)*0.1)
         plt.ylim(ctend_min-(ctend_max-ctend_min)*0.1,ctend_max+(ctend_max-ctend_min)*0.1)
-        # añade un título a la figura
+        # Add a title to the figure
         plt.title('Valor decimal del binario de tendencias: '+str(bk_value))
-        # añade una leyenda en la que se indique que los colores azul, verde y rojo se corresponden a los valores 1, 2 y 3 de estrés
+        # Add a legend indicating that the colors blue, green and red correspond to the values 1, 2 and 3 of stress
         plt.legend(handles=[mpatches.Patch(color='blue', label='1'),mpatches.Patch(color='green', label='2'),mpatches.Patch(color='red', label='3')])
-        # guarda la figura
+        # Save the figure
         plt.savefig(save_folder+'bk/'+str(bk_value)+'.png')
-        # cierra la figura
+        # Close the figure
         plt.close()
 
-    #crea una figura
+    # Create a figure
     plt.figure(figsize=(20,10))
-    #crea un scatter plot con tdv_5_8_max en x, ctend en y y colores según valdatapd
+    # Create a scatter plot with tdv_5_8_max in x, ctend in y and colors according to valdatapd
     plt.scatter(tdv_max_stack,ctend_stack,c=data_stack.apply(lambda x: colors[int(x-1)]),alpha=alfa)
-    # añade etiquetas a los ejes
+    # Add labels to the axes
     plt.xlabel('Máximo actual')
     plt.ylabel('Diferencia entre el máximo actual y el máximo en el último cambio de tendencia')
-    # añade una leyenda en la que se indique que los colores azul, verde y rojo se corresponden a los valores 1, 2 y 3 de estrés
+    # Add a legend indicating that the colors blue, green and red correspond to the values 1, 2 and 3 of stress
     plt.legend(handles=[mpatches.Patch(color='blue', label='1'),mpatches.Patch(color='green', label='2'),mpatches.Patch(color='red', label='3')])
-    # guarda la figura
+    # Save the figure
     plt.savefig(save_folder+'ctend_vs_tdv_max.png')
-    # cierra la figura
+    # Close the figure
     plt.close()
