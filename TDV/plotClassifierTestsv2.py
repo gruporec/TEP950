@@ -83,7 +83,7 @@ for iyear in range(len(years)):
     pk=pk1-pk0
 
 
-    # create a new dataframe fk with the exponentieali weighted moving average of tdv_5_8_max_diff_sign
+    # create a new dataframe fk with the exponentially weighted moving average of tdv_5_8_max_diff_sign
     fk=tdv_5_8_max_diff_sign.ewm(alpha=0.5).mean()
 
     # Create a dataframe with diff tdv_5_8_max_diff_sign that represents the changes of trend
