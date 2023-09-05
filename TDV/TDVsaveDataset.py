@@ -1,20 +1,13 @@
 import sys
-from time import time
-import matplotlib
-from matplotlib import patches as mpatches
-from matplotlib.markers import MarkerStyle
 import pandas as pd
 import os
-import matplotlib.pyplot as plt
 import numpy as np
 from datetime import time
 
-from sklearn.ensemble import RandomForestClassifier
-from sklearn.tree import DecisionTreeClassifier
+#add the path to the lib folder to the system path
+sys.path.append(os.path.join(os.path.dirname(__file__), '..', 'lib'))
+# import the isadoralib library
 import isadoralib as isl
-import sklearn.discriminant_analysis as skda
-import sklearn.metrics as skmetrics
-import sklearn.decomposition as skdecomp
 
 years=["2014","2015","2016","2019"]
 stress_mismatch=[-1,0,0,0]
