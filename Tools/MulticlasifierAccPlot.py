@@ -22,7 +22,10 @@ sns.set(rc={'figure.figsize':(11.7,8.27)})
 # ---CONFIGURATION---
 
 #dataset file path
-dataset=os.path.dirname(os.path.dirname(__file__))+"\\db\\ZIMdb14151619.csv"
+# ZIM
+#dataset=os.path.dirname(os.path.dirname(__file__))+"\\db\\ZIMdb14151619.csv"
+# dendrometers
+dataset=os.path.dirname(os.path.dirname(__file__))+"\\db\\TDVdb14151619.csv"
 
 # select training data mode: by year (mixed=False) or mixed (mixed=True)
 mixed=True
@@ -41,7 +44,7 @@ mixedtrains=[0.1,0.2,0.3,0.4,0.5,0.6,0.7,0.8,0.9]
 year_train=["2014"]
 
 # apply PCA
-dopca=True
+dopca=False
 # number of components for PCA
 ncomp=13
 
@@ -148,6 +151,12 @@ def process(alphamixedtrain):
     # split the test data into X and Y
     Xtest=dbtest.iloc[:,:-1]
     Ytest=dbtest.iloc[:,-1]
+
+    # Convert data to numpy arrays
+    Xtrain=Xtrain.values
+    Ytrain=Ytrain.values
+    Xtest=Xtest.values
+    Ytest=Ytest.values
 
     # apply PCA if dopca=True
     if dopca:
