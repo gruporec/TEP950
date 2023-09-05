@@ -2,10 +2,13 @@
 A comprehensive list of all the relevant and/or useful files and folders available in this github is available in the following lines.
 
 ## Tools (folder)
-Contains tools that are useful to various task, not limited to a single part of the project but related to all, or at least several, of them
+Contains tools that are useful to various task, not limited to a single part of the project but related to all, or at least several, of them.
 
 ### folderToPDF.py
 Given a list of directories to be inputed as folders=["dir1","dir2",etc], each inputed directory and each of its subdirectories will be scaned in search of png images. Every image found will be added to a PDF file per subfolder, as well as a general PDF file per main directory provided. The PDF files will be saved in each of the subdirectories and in the main directory respectively. The name of the PDF files will be the same as the name of the folder they are in.
+
+### MulticlasifierAccPlot.py
+Configurable script that tests accuracy of multiple configurable classifiers over a preprocessed database. Available clasifiers include linear and quadratic discriminant analysis from sklearn and krigging based classifiers from isadoralib, developped under this project. The script generates a plot with the measured accuracies versus the fraction of data that was used for training. It can also print relevant information such as the current configuration of the classifier, its confusion matrices and its balanced accuracy to console.
 
 ### plotTDVMonthColor.py
 Given a list of available years and a save directory path, plots TDV data and colors it according to manual clasification.
@@ -13,11 +16,8 @@ Given a list of available years and a save directory path, plots TDV data and co
 ## LTP (folder)
 Contains scripts related to LTP and ZIM probes.
 
-### ZIMMulticlasifierAccPlot.py
-Configurable script that tests accuracy of multiple configurable classifiers over a preprocessed ZIM probe database. Available clasifiers include linear and quadratic discriminant analysis from sklearn and krigging based classifiers from isadoralib, developped under this project. The script generates a plot with the measured accuracies versus the fraction of data that was used for training. It can also print relevant information such as the current configuration of the classifier, its confusion matrices and its balanced accuracy to console.
-
 ### ZIMsaveDataset.py
-This script generates a preprocessed database to be used by **ZIMMulticlasifierAccPlot.py**. The applied preprocess is intended for ZIM probes. Some parameters can be adjusted via variables in the first lines of the script.
+This script generates a preprocessed database to be used by **MulticlasifierAccPlot.py** (see tools folder). The applied preprocess is intended for ZIM probes. Some parameters can be adjusted via variables in the first lines of the script.
 
 ## TDV (folder)
 Contains scripts related to TDV and dendrometers.
@@ -26,7 +26,7 @@ Contains scripts related to TDV and dendrometers.
 Plots some useful information about LTP characteristics to be used in the classifiers and saves the plots.
 
 ### TDVsaveDataset.py
-This script generates a preprocessed database that can be used by **ZIMMulticlasifierAccPlot.py** (maybe renaming the classifier to a generic version is in order). The applied preprocess is intended for dendrometers. Some parameters can be adjusted via variables in the first lines of the script.
+This script generates a preprocessed database that can be used by **MulticlasifierAccPlot.py** (see tools folder). The applied preprocess is intended for dendrometers. Some parameters can be adjusted via variables in the first lines of the script.
 
 ## db (folder)
 Contains preprocesed data used by scripts.
