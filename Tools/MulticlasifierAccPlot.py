@@ -35,7 +35,7 @@ keepClassProportions = True
 balanceTrainingClasses = False
 
 # number of repetitions for mixed=True
-nrep=10
+nrep=100
 
 # fraction of data used for training if mixed=True
 mixedtrains=[0.1,0.2,0.3,0.4,0.5,0.6,0.7,0.8,0.9]
