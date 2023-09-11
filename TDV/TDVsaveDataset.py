@@ -14,6 +14,7 @@ stress_mismatch=[-1,0,0,0]
 
 # Create an empty dataframe to save the processed data
 savedf=pd.DataFrame()
+
 # For each year in the list
 for i in range(0,len(years),1):
     # Get the year
@@ -65,8 +66,12 @@ for i in range(0,len(years),1):
     # Substract pk0 from pk1 to get the number of days since the last change of trend, with the sign of the current trend
     pk=pk1-pk0
 
+    # add 1 to the value of the first row of tdv_5_8_max_diff_sign. This way, bk will be calculated as if all the past days were of the same trend
+    tdv_5_8_max_diff_sign.iloc[0]=tdv_5_8_max_diff_sign.iloc[0]+1
     # create a new dataframe fk with the exponentially weighted moving average of tdv_5_8_max_diff_sign
-    bk=tdv_5_8_max_diff_sign.ewm(alpha=0.5).mean()
+    bk=tdv_5_8_max_diff_sign.ewm(alpha=0.5).sum()
+    # substract 1 to the value of the first row of tdv_5_8_max_diff_sign to restore its original value
+    tdv_5_8_max_diff_sign.iloc[0]=tdv_5_8_max_diff_sign.iloc[0]-1
     
     # Get the current trend into a new dataframe
     trend=tdv_5_8_max_diff_sign.copy()
@@ -129,13 +134,16 @@ for i in range(0,len(years),1):
     # Crop data_val to the indices of data_stack_val
     data_val=data_val.loc[data_stack_val.index]
 
+    # Add a column Y with the values of data_stack_val, substrating 1 to the values so that the clases are 0, 1 and 2
+    data_val["Y"]=data_stack_val-1
+
     # Add to savedf the values of data_val preserving the same columns
     savedf=pd.concat([savedf,data_val],axis=0)
 
-    # Add to savedf the values of stress as a column "Y", substrating 1 to the values so that the clases are 0, 1 and 2
-    savedf["Y"]=data_stack_val-1
+
     # Remove the rows with nan values
     savedf=savedf.dropna()
+    print(savedf)
 
 # Swap the index levels
 savedf=savedf.swaplevel()
@@ -144,4 +152,4 @@ savedf=savedf.swaplevel()
 year_datas_str = ''.join(year[-2:] for year in years)
 
 # store savedf in a csv with a name composed of 'TDVdb' followed by the last two digits of each year in year_datas
-savedf.to_csv('db\TDVdb'+year_datas_str+'.csv')
+savedf.to_csv('db\TDVdb'+year_datas_str+'.csv')   
