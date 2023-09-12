@@ -31,7 +31,7 @@ This script generates a preprocessed database that can be used by **Multiclasifi
 ## db (folder)
 Contains preprocesed data used by scripts.
 
-### ZIMdb14151619.csv
+### ZIMdb14151619Meteo.csv
 Database containing proprocesed ZIM data from years 2014, 2015, 2016 and 2019. Each row contains data for one day and sensor. Contains sensor name and date (labeled "Fecha") to be used as indexes, a series of numbered columns containing relevant data for classification and an Y column containing manual clasification for that day and sensor. Relevant data includes 80 samples of ZIM sensor and 4 samples of each meteorological data, which includes net radiation, humidity and temperature, all measured during daytime. 
 
 ### TDVdb14151619.csv
