@@ -147,3 +147,6 @@ for file in files:
         
         # save the plot using the clasifier name and the database name as the name of the file
         plt.savefig(clasif+"_"+str(file)+".png")
+
+        #close the plot
+        plt.close()
