@@ -11,16 +11,16 @@ n=2
 m=[100,100,100,100,100]
 
 # Center of the classes
-c=[[0,0],[1,1],[0,1],[1,0],[0.5,0.5]]
+c=[[0,0],[0,0],[0,1],[1,0],[0.5,0.5]]
 
 # Standard deviation of the classes
-s=[0.3,0.3,0.3,0.3,0.3]
+s=[0.1,0.1,0.3,0.3,0.3]
 
 #size of the shapes
 size=[0.5,0.5,0.5,0.5,0.5]
 
 # Shape of the classes
-shape=["dot","circle"]
+shape=["dot","square"]
 
 #Get the folder where the script is
 folder=os.path.dirname(__file__)
@@ -43,11 +43,26 @@ for i in range(n):
                 # Create a random radius with s as standard deviation and size as mean
                 radius=np.random.normal(size[i],s[i],1)
                 # Get a point that is the radius away from the center in the angle direction
-                point=np.array(c[i])+radius*np.array([np.cos(angle),np.sin(angle)])
+                point=np.array(c[i])+np.transpose(np.array([np.cos(angle),np.sin(angle)])*radius)
                 # Add the point to the dataframe
                 df=pd.concat([df,pd.DataFrame(point,columns=["a","b"])])
-                print(df)
-                sys.exit()
+        case "square":
+            # Create an empty dataframe
+            df=pd.DataFrame()
+            # For each sample of the class
+            for j in range(m[i]):
+                #randomly choose direction
+                direction=np.random.randint(0,4,1)
+                #randomly choose distance up to size
+                distance=np.random.uniform(-size[i],size[i],1)
+                # Create a point that is the size away from the center in the direction direction and distance distance in a perpendicular direction
+                point=np.array(c[i])+np.transpose(np.array([np.cos(direction*np.pi/2),np.sin(direction*np.pi/2)])*size[i])+np.transpose(np.array([np.cos(direction*np.pi/2+np.pi/2),np.sin(direction*np.pi/2+np.pi/2)])*distance)
+                # Create a random angle
+                angle=np.random.uniform(0,2*np.pi,1)
+                # displace the point a random distance with s as standard deviation along direction angle
+                point=point+np.transpose(np.array([np.cos(angle),np.sin(angle)])*np.random.normal(0,s[i],1))
+                # Add the point to the dataframe
+                df=pd.concat([df,pd.DataFrame(point,columns=["a","b"])])
         case _: # dot
             # Create a dataframe with the values of the class
             df=pd.DataFrame(np.random.normal(c[i],s[i],(m[i],len(c[i]))),columns=["a","b"])

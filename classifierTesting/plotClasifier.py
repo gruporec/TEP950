@@ -17,8 +17,8 @@ import isadoralib as isl
 
 sns.set(rc={'figure.figsize':(11.7,8.27)})
 
-# #use agg when intended for saving the image and not for showing it
-# plt.switch_backend('agg')
+#use agg when intended for saving the image and not for showing it
+plt.switch_backend('agg')
 
 # ---CONFIGURATION---
 
@@ -35,13 +35,12 @@ margin=0.1
 # "lda" and "qda" are the linear and quadratic discriminant analysis from sklearn
 # "kriggingfun" and "krigginglam" are the krigging based classifiers from isadoralib
 clasifs=["lda","qda","kriggingfun","krigginglam","nearestneighbours"]
-clasifs=["nearestneighbours"]
 
 # alpha for krigging 
 alpha=0
 
 #databases to plot
-files=[0,1]
+files=[0,1,2,3]
 
 # ---END OF CONFIGURATION---
 for file in files:
@@ -146,5 +145,5 @@ for file in files:
         # Plot the training data
         plt.scatter(Xtrain[:,0],Xtrain[:,1],c=Ytrain)
         
-        # show the plot
-        plt.show()
+        # save the plot using the clasifier name and the database name as the name of the file
+        plt.savefig(clasif+"_"+str(file)+".png")
