@@ -23,9 +23,9 @@ sns.set(rc={'figure.figsize':(11.7,8.27)})
 
 #dataset file path
 # ZIM
-#dataset=os.path.dirname(os.path.dirname(__file__))+"\\db\\ZIMdb14151619.csv"
+#dataset=os.path.dirname(os.path.dirname(__file__))+"\\db\\ZIMdb14151619Meteo.csv"
 # dendrometers
-dataset=os.path.dirname(os.path.dirname(__file__))+"\\db\\TDVdb14151619.csv"
+dataset=os.path.dirname(os.path.dirname(__file__))+"\\db\\TDVdb14151619Meteo.csv"
 
 # select training data mode: by year (mixed=False) or mixed (mixed=True)
 mixed=True
@@ -35,7 +35,7 @@ keepClassProportions = True
 balanceTrainingClasses = False
 
 # number of repetitions for mixed=True
-nrep=100
+nrep=10
 
 # fraction of data used for training if mixed=True
 mixedtrains=[0.1,0.2,0.3,0.4,0.5,0.6,0.7,0.8,0.9]
@@ -51,10 +51,11 @@ ncomp=13
 # clasifier types to use. Available types: "lda", "qda", "kriggingfun","krigginglam"
 # "lda" and "qda" are the linear and quadratic discriminant analysis from sklearn
 # "kriggingfun" and "krigginglam" are the krigging based classifiers from isadoralib
-clasifs=["lda","qda","kriggingfun","krigginglam"]
+#clasifs=["lda","qda","kriggingfun","krigginglam"]
+clasifs=["kriggingfun","krigginglam"]
 
 # alpha for krigging 
-alphaskrigging=[1]
+alphaskrigging=[0]
 
 # print the confusion matrix
 printConfusionMatrix=True

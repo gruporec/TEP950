@@ -12,6 +12,8 @@ import isadoralib as isl
 years=["2014","2015","2016","2019"]
 stress_mismatch=[-1,0,0,0]
 
+usemeteo=True
+
 # Create an empty dataframe to save the processed data
 savedf=pd.DataFrame()
 
@@ -134,22 +136,57 @@ for i in range(0,len(years),1):
     # Crop data_val to the indices of data_stack_val
     data_val=data_val.loc[data_stack_val.index]
 
+    # Rename the first index of data_val to "date" and the second to "id"
+    data_val.index.names=["date","id"]
+
+    # If usemeteo is True
+    if usemeteo:
+        # Get the average daily values of meteo
+        meteo_avg=meteo.groupby(meteo.index.date).mean()
+
+        # Rename the index of meteo_avg to "date"
+        meteo_avg.index.names=["date"]
+
+        # Create a new dataframe
+        meteo_avg_data=pd.DataFrame()
+
+        # For every unique value in the second level of the index of data_val
+        for i in data_val.index.get_level_values(1).unique():
+            # create an auxiliary dataframe with the data of meteo_avg
+            aux=pd.DataFrame(meteo_avg,index=meteo_avg.index,columns=meteo_avg.columns)
+            # Add a column with the value of i
+            aux["id"]=i
+            # Add the new column to the index
+            aux=aux.set_index("id",append=True)
+
+            #add the values of aux to meteo_avg_data
+            meteo_avg_data=pd.concat([meteo_avg_data,aux],axis=0)
+
+        # Combine the data of meteo_avg_data and data_val
+        data_val=pd.merge(data_val,meteo_avg_data,how="left",left_index=True,right_index=True)
+
+
     # Add a column Y with the values of data_stack_val, substrating 1 to the values so that the clases are 0, 1 and 2
     data_val["Y"]=data_stack_val-1
 
     # Add to savedf the values of data_val preserving the same columns
     savedf=pd.concat([savedf,data_val],axis=0)
 
+    # Remove empty columns
+    savedf=savedf.dropna(axis=1,how="all")
 
     # Remove the rows with nan values
     savedf=savedf.dropna()
-    print(savedf)
 
 # Swap the index levels
 savedf=savedf.swaplevel()
 
 # create a string with the last two digits of each year in years
 year_datas_str = ''.join(year[-2:] for year in years)
+
+# if meteo is True, add "Meteo" to the string
+if usemeteo:
+    year_datas_str=year_datas_str+"Meteo"
 
 # store savedf in a csv with a name composed of 'TDVdb' followed by the last two digits of each year in year_datas
 savedf.to_csv('db\TDVdb'+year_datas_str+'.csv')   
