@@ -145,8 +145,11 @@ for file in files:
         # Plot the training data
         plt.scatter(Xtrain[:,0],Xtrain[:,1],c=Ytrain)
         
+        #check if the plots folder exists and create it if it doesn't
+        if not os.path.exists("Plots"):
+            os.makedirs("Plots")
         # save the plot using the clasifier name and the database name as the name of the file
-        plt.savefig(clasif+"_"+str(file)+".png")
+        plt.savefig("Plots\\"+clasif+"_"+str(file)+".png")
 
         #close the plot
         plt.close()
