@@ -35,7 +35,7 @@ keepClassProportions = True
 balanceTrainingClasses = False
 
 # number of repetitions for mixed=True
-nrep=1
+nrep=100
 
 # fraction of data used for training if mixed=True
 mixedtrains=[0.1,0.2,0.3,0.4,0.5,0.6,0.7,0.8,0.9]
@@ -52,7 +52,7 @@ ncomp=13
 # "lda" and "qda" are the linear and quadratic discriminant analysis from sklearn
 # "kriggingfun" and "krigginglam" are the krigging based classifiers from isadoralib
 clasifs=["lda","qda"]
-#clasifs=["kriggingfun","krigginglam"]
+#clasifs=["lda","qda","kriggingfun","krigginglam"]
 
 # alpha for krigging 
 alphaskrigging=[0]
