@@ -35,9 +35,10 @@ margin=0.1
 # "lda" and "qda" are the linear and quadratic discriminant analysis from sklearn
 # "kriggingfun" and "krigginglam" are the krigging based classifiers from isadoralib
 clasifs=["lda","qda","kriggingfun","krigginglam","nearestneighbours"]
+clasifs=["kriggingfun","krigginglam"]
 
 # alpha for krigging 
-alpha=0
+alpha=2
 
 #databases to plot
 files=[0,1,2,3]
@@ -149,7 +150,7 @@ for file in files:
         if not os.path.exists("Plots"):
             os.makedirs("Plots")
         # save the plot using the clasifier name and the database name as the name of the file
-        plt.savefig("Plots\\"+clasif+"_"+str(file)+".png")
+        plt.savefig("Plots\\"+clasif+"Alpha"+str(int(alpha*10))+"_"+str(file)+".png")
 
         #close the plot
         plt.close()
