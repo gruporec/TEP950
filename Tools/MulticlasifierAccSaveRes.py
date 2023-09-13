@@ -35,7 +35,7 @@ keepClassProportions = True
 balanceTrainingClasses = False
 
 # number of repetitions for mixed=True
-nrep=10
+nrep=1
 
 # fraction of data used for training if mixed=True
 mixedtrains=[0.1,0.2,0.3,0.4,0.5,0.6,0.7,0.8,0.9]
@@ -326,6 +326,10 @@ if __name__ == "__main__":
                     # print the balanced accuracy
                     print("training balanced accuracy:",tracc)
                     print("test balanced accuracy:",teacc)
+                #add the results to the results dataframe using the classifier, alpha and fraction of data used for training as index
+                results.loc[(clasif,alpha,mixedtrain),:]=np.concatenate(([teacc],trcm.flatten(),tecm.flatten()))
+                print(results)
+                sys.exit()
 
         # substract the mean value from the maximum and minimum values to obtain the error
         testaccmaxdif=np.array(testaccmax)-np.array(testacc)
