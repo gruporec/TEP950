@@ -15,9 +15,9 @@ warnings.filterwarnings("ignore")
 
 
 # # carga el dataset de iris de sklearn
-dataset = skdata.load_iris()
+# dataset = skdata.load_iris()
 # carga el dataset de dígitos de sklearn
-#dataset = skdata.load_digits()
+dataset = skdata.load_digits()
 # # carga el dataset de cancer de sklearn
 #dataset = skdata.load_breast_cancer()
 # # carga el dataset de vinos de sklearn

@@ -51,7 +51,7 @@ ncomp=13
 # clasifier types to use. Available types: "lda", "qda", "kriggingfun","krigginglam"
 # "lda" and "qda" are the linear and quadratic discriminant analysis from sklearn
 # "kriggingfun" and "krigginglam" are the krigging based classifiers from isadoralib
-clasifs=["lda","qda","kriggingfun","krigginglam"]
+clasifs=["lda","qda"]
 #clasifs=["kriggingfun","krigginglam"]
 
 # alpha for krigging 
@@ -85,8 +85,11 @@ nclasses = len(db["Y"].unique())
 # get a list of the elements of a confusion matrix as all possible combinations of the classes
 cm_elements = [str(i)+"-"+str(j) for i in range(nclasses) for j in range(nclasses)]
 
-# Create an empty dataframe to save the results, with one row for each combination of classifier, alpha and training data fraction and columns for test accuracy and each class confusion matrix element
-results = pd.DataFrame(columns=["testacc"]+cm_elements)
+# Create an empty dataframe to save the results, with one row for each combination of classifier and alpha fraction and columns for test accuracy and each class confusion matrix element and training data
+results = pd.DataFrame(columns=["testacc"]+cm_elements+["trdata"])
+
+# add trdata to the index
+results.set_index("trdata",append=True,inplace=True)
 
 # define a function for pararell processing that takes a tuple with krigging alpha, the fraction of data that is used for training and the clasifier type
 def process(alphamixedtrain):
@@ -326,31 +329,61 @@ if __name__ == "__main__":
                     # print the balanced accuracy
                     print("training balanced accuracy:",tracc)
                     print("test balanced accuracy:",teacc)
-                #add the results to the results dataframe using the classifier, alpha and fraction of data used for training as index
-                results.loc[(clasif,alpha,mixedtrain),:]=np.concatenate(([teacc],trcm.flatten(),tecm.flatten()))
+                #convert the confusion matrices to lists of single elements
+                trcm=trcm/np.sum(trcm,axis=1)[:,None]
+                tecm=tecm/np.sum(tecm,axis=1)[:,None]
+                trcm=trcm.flatten().tolist()
+                tecm=tecm.flatten().tolist()
+                #combine the accuracy and confusion matrix elements into a single list
+                acccm=[teacc]+tecm
+                print(acccm)
                 print(results)
-                sys.exit()
+                #add the results to the results dataframe using the classifier, alpha and fraction of data used for training as index in a single string
+                results.loc[(clasif+"-"+str(alpha),mixedtrain),:]=acccm
+                print(results)
+    print(results)
+    # create a figure with classes plots per axis
+    fig, axs = plt.subplots(nclasses, nclasses,figsize=(11.7,8.27))
 
-        # substract the mean value from the maximum and minimum values to obtain the error
-        testaccmaxdif=np.array(testaccmax)-np.array(testacc)
-        trainaccmaxdif=np.array(trainaccmax)-np.array(trainacc)
-        testaccmindif=np.array(testaccmin)-np.array(testacc)
-        trainaccmindif=np.array(trainaccmin)-np.array(trainacc)
+    #set some margin for the subplots
+    fig.subplots_adjust(hspace=0.4, wspace=0.4)
 
-        # combine the maximum and minimum values into an array with shape (2,N)
-        testaccerr=np.array([testaccmindif,testaccmaxdif])
-        trainaccerr=np.array([trainaccmindif,trainaccmaxdif])
 
-        # get the absolute values of the errors
-        testaccerr=np.abs(testaccerr)
-        trainaccerr=np.abs(trainaccerr)
+    # for each combination of classes
+    for i in range(nclasses):
+        for j in range(nclasses):
+            # for each unique element in the first index of the results dataframe
+            for clasif in results.index.get_level_values(0).unique():
+                # get the results for the combination of classes and clasifier
+                res=results.loc[(clasif),str(i)+"-"+str(j)]
 
-        # plot the balanced accuracy vs the fraction of data used for training
-        plt.errorbar(mixedtrains,trainacc,yerr=trainaccerr,label=clasif+' train',capsize=5,fmt='o-')
-        plt.errorbar(mixedtrains,testacc,yerr=testaccerr,label=clasif+' test',capsize=5, fmt='o-')
-    plt.xlabel('fraction of data used for train')
-    plt.ylabel('balanced accuracy')
-    plt.legend()
+                # get the index of res as a list xdata
+                xdata=res.index.tolist()
+                # get the values of res as a list ydata
+                ydata=res.values.tolist()
+
+                print(str(i)+"-"+str(j))
+                print(res)
+                
+                # if the results are not empty
+                if not res.empty:
+                    #plot the results
+                    axs[i,j].plot(xdata,ydata,label=clasif)
+        
+    # add axis labels to all axis
+    for ax in axs.flat:
+        ax.set(xlabel='fraction of data used for train', ylabel='number of elements assigned')
+    # add a legend to all axis
+    for ax in axs.flat:
+        ax.legend()
+    #add a title to each axis
+    for i in range(nclasses):
+        for j in range(nclasses):
+            axs[i,j].set_title(str(i)+"-"+str(j))
+    
+    #set y axis limits to -0.1,1.1
+    for ax in axs.flat:
+        ax.set_ylim(-0.1,1.1)
 
     # comment if using agg
     plt.show()
