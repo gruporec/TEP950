@@ -25,7 +25,7 @@ for i in range(0,len(years),1):
     mismatch=stress_mismatch[i]
 
     # Load the data
-    tdv,ltp,meteo,stress=isl.cargaDatosTDV(year,"")
+    tdv,ltp,meteo,stress=isl.cargaDatosTDV(year,"rht")
 
     # Remove the nan values
     tdv=tdv.dropna()
