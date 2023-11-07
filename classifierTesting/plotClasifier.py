@@ -33,12 +33,14 @@ margin=0.1
 
 # clasifier types to use. Available types: "lda", "qda", "kriggingfun","krigginglam"
 # "lda" and "qda" are the linear and quadratic discriminant analysis from sklearn
-# "kriggingfun" and "krigginglam" are the krigging based classifiers from isadoralib
+# "kriggingfun", "krigginglam" and "kriggingqda" are the krigging based classifiers from isadoralib
 clasifs=["lda","qda","kriggingfun","krigginglam","nearestneighbours"]
-clasifs=["kriggingfun","krigginglam"]
+clasifs=["customqda","kriggingqda"]
+clasifs=["kriggingqda", "qda", "customqda"]
+clasifs=["kriggingqda"]
 
 # alpha for krigging 
-alpha=2
+alpha=1
 
 #databases to plot
 files=[0,1,2,3]
@@ -102,6 +104,19 @@ for file in files:
                 # apply the classifier to the training and test data
                 Ytrain_pred=clf.predict(Xtrain)
                 Ytest_pred=clf.predict(Xtest)
+            
+            case "customqda":
+                clf=isl.qdaClassifier(Xtrain.T, Ytrain)
+
+                # apply the classifier to the training and test data
+                Ytrain_pred=np.empty(Xtrain.shape[0])
+                for i in range(Xtrain.shape[0]):
+                    Ytrain_pred[i]=clf.qda_classifier(Xtrain[i])
+
+                Ytest_pred=np.empty(Xtest.shape[0])
+                for i in range(Xtest.shape[0]):
+                    Ytest_pred[i]=clf.qda_classifier(Xtest[i])
+
 
             case "kriggingfun":
                 kr_lambda = isl.KriggingFunctionClassifier(Xtrain.T, alpha, Ytrain)
@@ -126,6 +141,18 @@ for file in files:
                 Ytest_pred=np.empty(Xtest.shape[0])
                 for i in range(Xtest.shape[0]):
                     Ytest_pred[i]= kr_lambda.lambda_classifier(Xtest[i])
+
+            case "kriggingqda":
+                kr_lambda = isl.KriggingQDA(Xtrain.T, alpha, Ytrain)
+
+                # apply the classifier to the training and test data
+                Ytrain_pred=np.empty(Xtrain.shape[0])
+                for i in range(Xtrain.shape[0]):
+                    Ytrain_pred[i]= kr_lambda.qda_classifier(Xtrain[i])
+                
+                Ytest_pred=np.empty(Xtest.shape[0])
+                for i in range(Xtest.shape[0]):
+                    Ytest_pred[i]= kr_lambda.qda_classifier(Xtest[i])
             
             case "nearestneighbours":
                 clf = neighbors.KNeighborsClassifier(5)
@@ -146,11 +173,14 @@ for file in files:
         # Plot the training data
         plt.scatter(Xtrain[:,0],Xtrain[:,1],c=Ytrain)
         
+        #add a title
+        plt.title(clasif+" Alpha="+str(alpha))
+        
         #check if the plots folder exists and create it if it doesn't
         if not os.path.exists("Plots"):
             os.makedirs("Plots")
         # save the plot using the clasifier name and the database name as the name of the file
-        plt.savefig("Plots\\"+clasif+"Alpha"+str(int(alpha*10))+"_"+str(file)+".png")
+        plt.savefig("Plots\\qdaVSkrig\\"+clasif+"Alpha"+str(int(alpha*10))+"_"+str(file)+".png")
 
         #close the plot
         plt.close()

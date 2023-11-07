@@ -265,6 +265,8 @@ class KriggingQDA:
             self.kriggings.append(KriggingClassifier(Xtrain_i, self.alpha, ytrain_i))
         
         self.N=self.Xtrain.shape[1]
+        #number of samples in each class
+        self.Nk=[self.Xtrain[:,np.where(self.ytrain == i)[0]].shape[1] for i in range(self.num_classes)]
         self.CovMatrices=[]
         self.CovMatDet=[]
         self.PriorProb=[]
@@ -273,13 +275,21 @@ class KriggingQDA:
             self.CovMatDet.append(np.linalg.det(self.CovMatrices[i]))
             self.PriorProb.append(self.Xtrain[:,np.where(self.ytrain == i)[0]].shape[1]/self.Xtrain.shape[1])
 
+
+        self.AvgX=[]
+        for i in range(self.num_classes):
+            self.AvgX.append(np.mean(self.Xtrain[:,np.where(self.ytrain == i)[0]],axis=1))
+
         
     def qda_classifier(self,x):
         '''Applies the classifier to a feature vector x. Returns the predicted class based on the value of the objective function.'''
         # apply the classifier to x
         y_pred_fun = [self.kriggings[i].apply(x)[0] for i in range(self.num_classes)]
+
+        #print([np.divide(-np.dot(self.Nk[i]/2,y_pred_fun[i]),np.dot(np.dot((x-self.AvgX[i]).T,np.linalg.inv(self.CovMatrices[i])),(x-self.AvgX[i]))) for i in range(self.num_classes)])
+        
         # adjust the value of the objective function so that it is equivalent to QDA
-        y_pred_fun_qda=[-self.N/2*y_pred_fun[i]+np.log(self.PriorProb[i])-1/2*np.log(self.CovMatDet[i]) for i in range(self.num_classes)]
+        y_pred_fun_qda=[-np.dot(self.Nk[i]/2,y_pred_fun[i])+np.log(self.PriorProb[i])-1/2*np.log(self.CovMatDet[i]) for i in range(self.num_classes)]
         # select the class with the highest value of the objective function
         y_pred_fun_qda = np.argmax(y_pred_fun_qda)
         return y_pred_fun_qda
@@ -293,3 +303,41 @@ class KriggingQDA:
         # calculate the probability of each class
         P_class=[np.exp(y_pred_fun_qda[i])/np.sum(np.exp(y_pred_fun_qda)) for i in range(self.num_classes)]
         return P_class        
+    
+class qdaClassifier:
+    '''Implements basic QDA'''
+
+    def __init__(self, Xtrain, ytrain=None):
+        # Store the training data
+        self.Xtrain = Xtrain
+        if ytrain is None:
+            self.ytrain = np.zeros(Xtrain.shape[0])
+        # Update ytrain vector
+        self.update_ytrain(ytrain)
+
+    def update_ytrain(self, ytrain):
+        '''Updates ytrain vector with the training data classes.'''
+        self.ytrain = ytrain
+        self.num_classes = np.unique(ytrain).shape[0]
+        
+        self.N=self.Xtrain.shape[1]
+        self.CovMatrices=[]
+        self.CovMatDet=[]
+        self.PriorProb=[]
+        self.AvgX=[]
+        for i in range(self.num_classes):
+            self.CovMatrices.append(np.cov(self.Xtrain[:,np.where(self.ytrain == i)[0]]))
+            self.CovMatDet.append(np.linalg.det(self.CovMatrices[i]))
+            self.PriorProb.append(self.Xtrain[:,np.where(self.ytrain == i)[0]].shape[1]/self.Xtrain.shape[1])
+            self.AvgX.append(np.mean(self.Xtrain[:,np.where(self.ytrain == i)[0]],axis=1))
+
+    def qda_classifier(self,x):
+        '''Applies the classifier to a feature vector x. Returns the predicted class based on the value of the objective function.'''
+        mahalanobis=[]
+        for i in range(self.num_classes):
+            mahalanobis.append(np.dot(np.dot((x-self.AvgX[i]).T,np.linalg.inv(self.CovMatrices[i])),(x-self.AvgX[i])))
+        # calculate the proportional probability of each class
+        y_pred_fun_qda=[-1/2*mahalanobis[i]+np.log(self.PriorProb[i])-1/2*np.log(self.CovMatDet[i]) for i in range(self.num_classes)]
+        # select the class with the highest value of the objective function
+        y_pred_fun_qda = np.argmax(y_pred_fun_qda)
+        return y_pred_fun_qda
