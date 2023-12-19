@@ -5,22 +5,22 @@ import matplotlib.pyplot as plt
 import os
 
 # Number of classes
-n=2
+n=3
 
 # Number of samples per class
 m=[100,100,100,100,100]
 
 # Center of the classes
-c=[[0,0],[0,0],[0,1],[1,0],[0.5,0.5]]
+c=[[0,0],[0.5,0.833],[1,0],[1,0],[0.5,0.5]]
 
 # Standard deviation of the classes
-s=[0.1,0.1,0.3,0.3,0.3]
+s=[0.5,0.5,0.5,0.3,0.3]
 
 #size of the shapes
-size=[0.5,0.5,0.5,0.5,0.5]
+size=[0,0,0,0.5,0.5]
 
 # Shape of the classes
-shape=["dot","square"]
+shape=["circle","circle","circle"]
 
 #Get the folder where the script is
 folder=os.path.dirname(__file__)
@@ -87,10 +87,10 @@ count=0
 saved=0
 while(saved==0):
     # Check if count.csv exists in this folder
-    if os.path.isfile(folder+"/db/"+str(count)+".csv"):
+    if os.path.isfile(folder+"/db2/"+str(count)+".csv"):
         # If it exists, add 1 to the count
         count=count+1
     # Else, save the dataframe as count.csv
     else:
-        data.to_csv(folder+"/db/"+str(count)+".csv",index=False)
+        data.to_csv(folder+"/db2/"+str(count)+".csv",index=False)
         saved=1

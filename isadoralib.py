@@ -6,7 +6,7 @@ import qpsolvers as qp
 def cargaDatos(year,sufix):
     '''Load data corresponding to a year stored in the files [year][sufix].csv and validacion[year].csv and returns a tuple (tdv,ltp,meteo,hidric stress level).'''
     # Load data
-    df = pd.read_csv("..\\rawMinutales"+year+sufix+".csv",na_values='.')
+    df = pd.read_csv("rawMinutales"+year+sufix+".csv",na_values='.')
     df.loc[:,"Fecha"]=pd.to_datetime(df.loc[:,"Fecha"])# Date as datetime
     df=df.drop_duplicates(subset="Fecha")
     df.dropna(subset = ["Fecha"], inplace=True)
@@ -236,3 +236,183 @@ class KriggingFunctionClassifier:
         if y_pred_fun == np.inf:
             y_pred_fun = self.num_classes
         return y_pred_fun
+    
+class KriggingQDA:
+    '''Emulates QDA using Kriging for the Mahalanobis distance calculation. It should be equivalent to regular QDA when the value of alpha is 0.'''
+
+    def __init__(self, Xtrain, alpha, ytrain=None):
+        # Store the training data
+        self.Xtrain = Xtrain
+        if ytrain is None:
+            self.ytrain = np.zeros(Xtrain.shape[0])
+        # Store alpha value
+        self.alpha = alpha
+        # Update ytrain vector
+        self.update_ytrain(ytrain)
+    
+    def update_ytrain(self, ytrain):
+        '''Updates ytrain vector with the training data classes.'''
+        self.ytrain = ytrain
+        self.num_classes = np.unique(ytrain).shape[0]
+        
+        self.kriggings = []
+        # create a krigging classifier for each class
+        for i in range(self.num_classes):
+            # get the training data for class i
+            Xtrain_i = self.Xtrain[:,np.where(self.ytrain == i)[0]]
+            ytrain_i = self.ytrain[np.where(self.ytrain == i)[0]]
+            # create a krigging classifier in the list of classifiers
+            self.kriggings.append(KriggingClassifier(Xtrain_i, self.alpha, ytrain_i))
+        
+        self.N=self.Xtrain.shape[1]
+        #number of samples in each class
+        self.Nk=[self.Xtrain[:,np.where(self.ytrain == i)[0]].shape[1] for i in range(self.num_classes)]
+        self.CovMatrices=[]
+        self.CovMatDet=[]
+        self.PriorProb=[]
+        for i in range(self.num_classes):
+            self.CovMatrices.append(np.cov(self.Xtrain[:,np.where(self.ytrain == i)[0]]))
+            self.CovMatDet.append(np.linalg.det(self.CovMatrices[i]))
+            self.PriorProb.append(self.Xtrain[:,np.where(self.ytrain == i)[0]].shape[1]/self.Xtrain.shape[1])
+
+
+        self.AvgX=[]
+        for i in range(self.num_classes):
+            self.AvgX.append(np.mean(self.Xtrain[:,np.where(self.ytrain == i)[0]],axis=1))
+
+        
+    def qda_classifier(self,x):
+        '''Applies the classifier to a feature vector x. Returns the predicted class based on the value of the objective function.'''
+        # apply the classifier to x
+        y_pred_fun = [self.kriggings[i].apply(x)[0] for i in range(self.num_classes)]
+
+        #print([np.divide(-np.dot(self.Nk[i]/2,y_pred_fun[i]),np.dot(np.dot((x-self.AvgX[i]).T,np.linalg.inv(self.CovMatrices[i])),(x-self.AvgX[i]))) for i in range(self.num_classes)])
+        
+        # adjust the value of the objective function so that it is equivalent to QDA
+        y_pred_fun_qda=[-np.dot(self.Nk[i]/2,y_pred_fun[i])+np.log(self.PriorProb[i])-1/2*np.log(self.CovMatDet[i]) for i in range(self.num_classes)]
+        # select the class with the highest value of the objective function
+        y_pred_fun_qda = np.argmax(y_pred_fun_qda)
+        return y_pred_fun_qda
+    
+    def qda_classifier_prob(self,x):
+        '''Applies the classifier to a feature vector x. Returns the probability of each class.'''
+        # apply the classifier to x
+        y_pred_fun = [self.kriggings[i].apply(x)[0] for i in range(self.num_classes)]
+        # adjust the value of the objective function so that it is equivalent to QDA
+        y_pred_fun_qda=[-self.N/2*y_pred_fun[i]+np.log(self.PriorProb[i])-1/2*np.log(self.CovMatDet[i]) for i in range(self.num_classes)]
+        # calculate the probability of each class
+        P_class=[np.exp(y_pred_fun_qda[i])/np.sum(np.exp(y_pred_fun_qda)) for i in range(self.num_classes)]
+        return P_class        
+    
+class qdaClassifier:
+    '''Implements basic QDA'''
+
+    def __init__(self, Xtrain, ytrain=None):
+        # Store the training data
+        self.Xtrain = Xtrain
+        if ytrain is None:
+            self.ytrain = np.zeros(Xtrain.shape[0])
+        # Update ytrain vector
+        self.update_ytrain(ytrain)
+
+    def update_ytrain(self, ytrain):
+        '''Updates ytrain vector with the training data classes.'''
+        self.ytrain = ytrain
+        self.num_classes = np.unique(ytrain).shape[0]
+        
+        self.N=self.Xtrain.shape[1]
+        self.CovMatrices=[]
+        self.CovMatDet=[]
+        self.PriorProb=[]
+        self.AvgX=[]
+        for i in range(self.num_classes):
+            self.CovMatrices.append(np.cov(self.Xtrain[:,np.where(self.ytrain == i)[0]]))
+            self.CovMatDet.append(np.linalg.det(self.CovMatrices[i]))
+            self.PriorProb.append(self.Xtrain[:,np.where(self.ytrain == i)[0]].shape[1]/self.Xtrain.shape[1])
+            self.AvgX.append(np.mean(self.Xtrain[:,np.where(self.ytrain == i)[0]],axis=1))
+
+    def qda_classifier(self,x):
+        '''Applies the classifier to a feature vector x. Returns the predicted class based on the value of the objective function.'''
+        mahalanobis=[]
+        for i in range(self.num_classes):
+            mahalanobis.append(np.dot(np.dot((x-self.AvgX[i]).T,np.linalg.inv(self.CovMatrices[i])),(x-self.AvgX[i])))
+        # calculate the proportional probability of each class
+        y_pred_fun_qda=[-1/2*mahalanobis[i]+np.log(self.PriorProb[i])-1/2*np.log(self.CovMatDet[i]) for i in range(self.num_classes)]
+        # select the class with the highest value of the objective function
+        y_pred_fun_qda = np.argmax(y_pred_fun_qda)
+        return y_pred_fun_qda
+    
+class KrigBayesian:
+    '''Our proposed Bayesian-based Kriging classifier. It is equivalent to QDA when using default values.'''
+    def __init__(self, Xtrain,krig_lambda=0, alphak=None, Fk=None, ytrain=None):
+        # Store the training data
+        self.Xtrain = Xtrain
+        if ytrain is None:
+            self.ytrain = np.zeros(Xtrain.shape[0])
+        # Store alpha value
+        self.alphak = alphak
+        # Store F value
+        self.Fk = Fk
+        # Store lambda value
+        self.krig_lambda = krig_lambda
+        # Update ytrain vector
+        self.update_ytrain(ytrain)
+
+    def update_ytrain(self, ytrain):
+        '''Updates ytrain vector with the training data classes.'''
+        self.ytrain = ytrain
+        self.num_classes = np.unique(ytrain).shape[0]
+        
+        self.kriggings = []
+        # create a krigging classifier for each class
+        for i in range(self.num_classes):
+            # get the training data for class i
+            Xtrain_i = self.Xtrain[:,np.where(self.ytrain == i)[0]]
+            ytrain_i = self.ytrain[np.where(self.ytrain == i)[0]]
+            # create a krigging classifier in the list of classifiers
+            self.kriggings.append(KriggingClassifier(Xtrain_i, self.krig_lambda, ytrain_i))
+        
+        self.N=self.Xtrain.shape[1]
+        #number of samples in each class
+        self.Nk=[self.Xtrain[:,np.where(self.ytrain == i)[0]].shape[1] for i in range(self.num_classes)]
+        self.CovMatrices=[]
+        self.CovMatDet=[]
+        self.PriorProb=[]
+        for i in range(self.num_classes):
+            self.CovMatrices.append(np.cov(self.Xtrain[:,np.where(self.ytrain == i)[0]]))
+            self.CovMatDet.append(np.linalg.det(self.CovMatrices[i]))
+            self.PriorProb.append(self.Xtrain[:,np.where(self.ytrain == i)[0]].shape[1]/self.Xtrain.shape[1])
+
+        self.AvgX=[]
+        for i in range(self.num_classes):
+            self.AvgX.append(np.mean(self.Xtrain[:,np.where(self.ytrain == i)[0]],axis=1))
+        
+        if self.alphak is None:
+            self.alphak=[self.Nk[i]/2 for i in range(self.num_classes)]
+
+    def class_prob(self,x):
+        '''Applies the classifier to a feature vector x. Returns the probability of each class.'''
+        # apply the classifier to x
+        y_pred_fun = [self.kriggings[i].apply(x)[0] for i in range(self.num_classes)]
+
+        #print([np.divide(-np.dot(self.Nk[i]/2,y_pred_fun[i]),np.dot(np.dot((x-self.AvgX[i]).T,np.linalg.inv(self.CovMatrices[i])),(x-self.AvgX[i]))) for i in range(self.num_classes)])
+        
+        #if F is None:
+        if self.Fk is None:
+            # calculate P=exp(-alphak*y_pred_funk) and normalize
+            Prob=[np.exp(-self.alphak[i]*y_pred_fun[i]) for i in range(self.num_classes)]
+            Prob=[Prob[i]/np.sum(Prob) for i in range(self.num_classes)]
+        else:
+            # calculate P=Fk*exp(-alphak*y_pred_funk)
+            Prob=[self.Fk[i]*np.exp(-self.alphak[i]*y_pred_fun[i]) for i in range(self.num_classes)]
+        return Prob
+        
+    def classify(self,x):
+        '''Applies the classifier to a feature vector x. Returns the predicted class based on the value of the objective function.'''
+        # apply the classifier to x
+        Prob=self.class_prob(x)
+        # select the class with the highest value of the objective function
+        y_pred = np.argmax(Prob)
+        return y_pred
+    
+   
