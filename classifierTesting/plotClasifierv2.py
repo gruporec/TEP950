@@ -18,7 +18,7 @@ import isadoralib as isl
 sns.set(rc={'figure.figsize':(11.7,8.27)})
 
 #use agg when intended for saving the image and not for showing it
-#plt.switch_backend('agg')
+plt.switch_backend('agg')
 
 # ---CONFIGURATION---
 
@@ -31,22 +31,23 @@ gridstep=0.01
 #margin for the plot
 margin=0.1
 
-#accuracy margin for the plot
-accmargin=0.05
+#accuracy margin
+acc_margin=0.1
 
 # clasifier types to use. Available types: "lda", "qda", "krigingfun","kriginglam"
 # "lda" and "qda" are the linear and quadratic discriminant analysis from sklearn
 # "krigingfun", "kriginglam" and "krigingqda" are the kriging based classifiers from isadoralib
 clasifs=["lda","qda","krigingfun","kriginglam","nearestneighbours"]
+clasifs=["qda","kriging"]
 clasifs=["kriging"]
 
 # lambda for kriging 
-kr_lambda=0
+kr_lambda=1
 
 # alpha for krig
 
 #databases to plot
-files=[0,1,2,3]
+files=[0,1,2,3,4,5]
 
 # ---END OF CONFIGURATION---
 for file in files:
@@ -98,15 +99,18 @@ for file in files:
             #     Ytrain_pred=clf.predict(Xtrain)
             #     Ytest_pred=clf.predict(Xtest)
 
-            # case "qda":
-            #     clf=sklda.QuadraticDiscriminantAnalysis()
+            case "qda":
+                clf=sklda.QuadraticDiscriminantAnalysis()
 
-            #     # train the classifier
-            #     clf.fit(Xtrain,Ytrain)
+                # train the classifier
+                clf.fit(Xtrain,Ytrain)
 
-            #     # apply the classifier to the training and test data
-            #     Ytrain_pred=clf.predict(Xtrain)
-            #     Ytest_pred=clf.predict(Xtest)
+                # apply the classifier to the training and test data to obtain the probabilities
+                Ytrain_pred=clf.predict_proba(Xtrain)
+                Ytest_pred=clf.predict_proba(Xtest)
+                print(Ytrain_pred.shape)
+
+
             
             # case "customqda":
             #     clf=isl.qdaClassifier(Xtrain.T, Ytrain)
@@ -122,23 +126,28 @@ for file in files:
 
             case "kriging":
                 clf=isl.KrigBayesian(Xtrain.T,krig_lambda=kr_lambda, alphak=None, Fk=None, ytrain=Ytrain)
-                # create a matrix of size 3 x Xtrain.shape[0] to store the results
-                Ytrain_pred=np.empty([3,Xtrain.shape[0]])
+                # calculate the number of classes
+                nclasses=len(np.unique(Ytrain))
+
+                # create a matrix of size nclases x Xtrain.shape[0] to store the results
+                Ytrain_pred=np.empty([nclasses,Xtrain.shape[0]])
 
                 # apply the classifier to the training and test data
                 for i in range(Xtrain.shape[0]):
-                    # store the results in the matrix. If the size is smaller than 3, pad with zeros
+                    # store the results in the matrix.
                     tempres=clf.class_prob(Xtrain[i])
-                    Ytrain_pred[:,i]=np.pad(tempres,(0,3-len(tempres)),constant_values=(0,0))
+                    Ytrain_pred[:,i]=tempres
 
-                # create a matrix of size 3 x Xtest.shape[0] to store the results
-                Ytest_pred=np.empty([3,Xtest.shape[0]])
+                # create a matrix of size nclasses x Xtest.shape[0] to store the results
+                Ytest_pred=np.empty([nclasses,Xtest.shape[0]])
                 for i in range(Xtest.shape[0]):
-                    # store the results in the matrix. If the size is smaller than 3, pad with zeros
+                    # store the results in the matrix.
                     tempres=clf.class_prob(Xtest[i])
-                    Ytest_pred[:,i]=np.pad(tempres,(0,3-len(tempres)),constant_values=(0,0))
+                    Ytest_pred[:,i]=tempres
                 # Transpose the results to match the shape of the grid
+                Ytrain_pred=Ytrain_pred.T
                 Ytest_pred=Ytest_pred.T
+                print(Ytrain_pred.shape)
 
             # case "krigingfun":
             #     kr_lambda = isl.KriggingFunctionClassifier(Xtrain.T, kr_lambda, Ytrain)
@@ -189,7 +198,11 @@ for file in files:
             case _:
                 # if the clasifier is not valid, print an error message
                 print("unvalid classifier")
-
+        # If the number of classes is 2, add a column of zeros to the probabilities
+        if Ytrain_pred.shape[1]==2:
+            Ytrain_pred=np.c_[Ytrain_pred,np.zeros(Ytrain_pred.shape[0])]
+            Ytest_pred=np.c_[Ytest_pred,np.zeros(Ytest_pred.shape[0])]
+        print(Ytest_pred)
         
 
         colors=["r","g","b"]
@@ -197,20 +210,21 @@ for file in files:
 
         # for each element in Ytest_pred
         for i in range(Ytest_pred.shape[0]):
-            #get the difference between the maximum and the second maximum
-            diff=np.max(Ytest_pred[i])-np.sort(Ytest_pred[i])[-2]
-            # if the difference is smaller than the accuracy margin change the value to (0,0,0)
-            if diff<accmargin:
-                Ytest_pred[i]=[0,0,0]
+            # get a ordered list of the probabilities
+            problist=np.argsort(Ytest_pred[i,:])
+            # get the difference between the first and second highest probabilities
+            diff=Ytest_pred[i,problist[-1]]-Ytest_pred[i,problist[-2]]
+            # if the difference is less than the accuracy margin
+            if diff<acc_margin:
+                # divide the values by 2
+                Ytest_pred[i,:]=Ytest_pred[i,:]/2
+
 
         # reshape the results to the grid shape
         Ytest_pred=Ytest_pred.reshape([xx.shape[0],xx.shape[1],3])
 
         # plot the results using imshow
-        plt.imshow(Ytest_pred,extent=[xmin,xmax,ymin,ymax],origin="lower")
-
-        plt.show()
-        sys.exit()
+        plt.imshow(Ytest_pred,extent=[xmin,xmax,ymin,ymax],origin="lower", alpha=0.5)
 
         # Plot the training data with the colors defined by the colors array
         plt.scatter(Xtrain[:,0],Xtrain[:,1],c=colors_pred,marker="x",s=100)

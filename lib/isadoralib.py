@@ -358,7 +358,7 @@ class KrigBayesian:
         # Update ytrain vector
         self.update_ytrain(ytrain)
 
-    def update_ytrain(self, ytrain):
+    def update_ytrain(self, ytrain,Fk=None):
         '''Updates ytrain vector with the training data classes.'''
         self.ytrain = ytrain
         self.num_classes = np.unique(ytrain).shape[0]
@@ -390,6 +390,11 @@ class KrigBayesian:
         if self.alphak is None:
             self.alphak=[self.Nk[i]/2 for i in range(self.num_classes)]
 
+        if self.Fk is None:
+            # Fk is calculated as 1/(2*pi^(N/2)*sqrt(CovMatDet[i]))*e^(1/2)
+            self.Fk=[1/(2*np.pi**(self.N/2)*np.sqrt(self.CovMatDet[i]))*np.exp(1/2) for i in range(self.num_classes)]
+        
+
     def class_prob(self,x):
         '''Applies the classifier to a feature vector x. Returns the probability of each class.'''
         # apply the classifier to x
@@ -397,14 +402,10 @@ class KrigBayesian:
 
         #print([np.divide(-np.dot(self.Nk[i]/2,y_pred_fun[i]),np.dot(np.dot((x-self.AvgX[i]).T,np.linalg.inv(self.CovMatrices[i])),(x-self.AvgX[i]))) for i in range(self.num_classes)])
         
-        #if F is None:
-        if self.Fk is None:
-            # calculate P=exp(-alphak*y_pred_funk) and normalize
-            Prob=[np.exp(-self.alphak[i]*y_pred_fun[i]) for i in range(self.num_classes)]
-            Prob=[Prob[i]/np.sum(Prob) for i in range(self.num_classes)]
-        else:
-            # calculate P=Fk*exp(-alphak*y_pred_funk)
-            Prob=[self.Fk[i]*np.exp(-self.alphak[i]*y_pred_fun[i]) for i in range(self.num_classes)]
+        # calculate P=Fk*exp(-alphak*y_pred_funk)
+        Prob=[self.Fk[i]*np.exp(-self.alphak[i]*y_pred_fun[i]) for i in range(self.num_classes)]
+        # calculate the probability of each class
+        Prob=[Prob[i]/np.sum(Prob) for i in range(self.num_classes)]
         return Prob
         
     def classify(self,x):
