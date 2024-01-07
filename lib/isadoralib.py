@@ -2,6 +2,7 @@ import pandas as pd
 import numpy as np
 import scipy.sparse as sp
 import qpsolvers as qp
+from scipy.optimize import minimize
 
 def cargaDatos(year,sufix):
     '''Load data corresponding to a year stored in the files [year][sufix].csv and validacion[year].csv and returns a tuple (tdv,ltp,meteo,hidric stress level).'''
@@ -416,4 +417,116 @@ class KrigBayesian:
         y_pred = np.argmax(Prob)
         return y_pred
     
-   
+class KrigOpt:
+    '''Our proposed Bayesian-based Kriging classifier with optimized F.'''
+    def __init__(self, Xtrain,krig_lambda=0, alphak=None, Fk=None, ytrain=None):
+        # Store the training data
+        self.Xtrain = Xtrain
+        if ytrain is None:
+            self.ytrain = np.zeros(Xtrain.shape[0])
+        # Store alpha value
+        self.alphak = alphak
+        # Store F value
+        self.Fk = Fk
+        # Store lambda value
+        self.krig_lambda = krig_lambda
+        # Update ytrain vector
+        self.update_ytrain(ytrain)
+
+    def update_ytrain(self, ytrain,Fk=None):
+        '''Updates ytrain vector with the training data classes.'''
+        self.ytrain = ytrain
+        self.num_classes = np.unique(ytrain).shape[0]
+        
+        self.kriggings = []
+        # create a krigging classifier for each class
+        for i in range(self.num_classes):
+            # get the training data for class i
+            Xtrain_i = self.Xtrain[:,np.where(self.ytrain == i)[0]]
+            ytrain_i = self.ytrain[np.where(self.ytrain == i)[0]]
+            # create a krigging classifier in the list of classifiers
+            self.kriggings.append(KriggingClassifier(Xtrain_i, self.krig_lambda, ytrain_i))
+        
+        self.N=self.Xtrain.shape[1]
+        #number of samples in each class
+        self.Nk=[self.Xtrain[:,np.where(self.ytrain == i)[0]].shape[1] for i in range(self.num_classes)]
+        self.CovMatrices=[]
+        self.CovMatDet=[]
+        self.PriorProb=[]
+        for i in range(self.num_classes):
+            self.CovMatrices.append(np.cov(self.Xtrain[:,np.where(self.ytrain == i)[0]]))
+            self.CovMatDet.append(np.linalg.det(self.CovMatrices[i]))
+            self.PriorProb.append(self.Xtrain[:,np.where(self.ytrain == i)[0]].shape[1]/self.Xtrain.shape[1])
+
+        self.AvgX=[]
+        for i in range(self.num_classes):
+            self.AvgX.append(np.mean(self.Xtrain[:,np.where(self.ytrain == i)[0]],axis=1))
+        
+        if self.alphak is None:
+            self.alphak=[self.Nk[i]/2 for i in range(self.num_classes)]
+
+        if self.Fk is None:
+            # Fk is calculated initially as 1/(2*pi^(N/2)*sqrt(CovMatDet[i]))*e^(1/2)
+            self.Fk=[1/(2*np.pi**(self.N/2)*np.sqrt(self.CovMatDet[i]))*np.exp(1/2) for i in range(self.num_classes)]
+
+        Probs=[]
+        # for every item in the training data
+        for x in self.Xtrain.T:
+            # calculate the probability of each class
+            Prob=self.class_prob(x)
+            # store the probabilities
+            Probs.append(Prob)
+
+        yProbs=[]
+        # for every item in the training data classes
+        for y in self.ytrain:
+            # create an array with length equal to the number of classes and a 1 in the position of the class
+            yProb=np.zeros(self.num_classes)
+            yProb[y]=1
+            # store the array
+            yProbs.append(yProb)
+        Fkfactor=[1 for i in range(self.num_classes)]
+        #optimize Fkfactor
+        res=minimize(self.correctError,Fkfactor,args=(Probs,yProbs),method='Nelder-Mead')
+
+        #print the optimized factor
+        print(res.x)
+
+        # update Fk with the optimized value
+        self.Fk=[self.Fk[i]*res.x[i] for i in range(self.num_classes)]
+
+
+
+    def correctError(self,Fkfactor, Probs, yProbs):
+
+        # for every item in Probs, multiply it by Fkfactor
+        for i in range(len(Probs)):
+            Probs[i]=[Probs[i][j]*Fkfactor[j] for j in range(self.num_classes)]
+        
+            # for every item in Probs, normalize it
+            Probs[i]=[Probs[i][j]/np.sum(Probs[i]) for j in range(self.num_classes)]
+        
+        # calculate the error as the sum of the squared differences between the probabilities and the classes
+        error=np.sum(np.square(np.subtract(Probs,yProbs)))
+        return error
+
+    def class_prob(self,x):
+        '''Applies the classifier to a feature vector x. Returns the probability of each class.'''
+        # apply the classifier to x
+        y_pred_fun = [self.kriggings[i].apply(x)[0] for i in range(self.num_classes)]
+
+        #print([np.divide(-np.dot(self.Nk[i]/2,y_pred_fun[i]),np.dot(np.dot((x-self.AvgX[i]).T,np.linalg.inv(self.CovMatrices[i])),(x-self.AvgX[i]))) for i in range(self.num_classes)])
+        
+        # calculate P=Fk*exp(-alphak*y_pred_funk)
+        Prob=[self.Fk[i]*np.exp(-self.alphak[i]*y_pred_fun[i]) for i in range(self.num_classes)]
+        # calculate the probability of each class
+        Prob=[Prob[i]/np.sum(Prob) for i in range(self.num_classes)]
+        return Prob
+        
+    def classify(self,x):
+        '''Applies the classifier to a feature vector x. Returns the predicted class based on the value of the objective function.'''
+        # apply the classifier to x
+        Prob=self.class_prob(x)
+        # select the class with the highest value of the objective function
+        y_pred = np.argmax(Prob)
+        return y_pred

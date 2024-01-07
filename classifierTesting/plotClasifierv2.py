@@ -39,10 +39,12 @@ acc_margin=0.1
 # "krigingfun", "kriginglam" and "krigingqda" are the kriging based classifiers from isadoralib
 clasifs=["lda","qda","krigingfun","kriginglam","nearestneighbours"]
 clasifs=["qda","kriging"]
-clasifs=["kriging"]
+clasifs=["krigingOpt"]
 
 # lambda for kriging 
-kr_lambda=1
+kr_lambda=0
+
+fileprefix=""
 
 # alpha for krig
 
@@ -108,7 +110,7 @@ for file in files:
                 # apply the classifier to the training and test data to obtain the probabilities
                 Ytrain_pred=clf.predict_proba(Xtrain)
                 Ytest_pred=clf.predict_proba(Xtest)
-                print(Ytrain_pred.shape)
+                #print(Ytrain_pred.shape)
 
 
             
@@ -125,9 +127,18 @@ for file in files:
             #         Ytest_pred[i]=clf.qda_classifier(Xtest[i])
 
             case "kriging":
-                clf=isl.KrigBayesian(Xtrain.T,krig_lambda=kr_lambda, alphak=None, Fk=None, ytrain=Ytrain)
                 # calculate the number of classes
                 nclasses=len(np.unique(Ytrain))
+
+                # calculate the number of data per class in the training data
+                Nk=np.array([np.sum(Ytrain==i) for i in range(nclasses)])
+
+                # calculate alpha
+                alphak=[Nk[i]/2 for i in range(nclasses)]
+                # alphak=None
+
+                # create the classifier
+                clf=isl.KrigBayesian(Xtrain.T,krig_lambda=kr_lambda, alphak=alphak, Fk=None, ytrain=Ytrain)
 
                 # create a matrix of size nclases x Xtrain.shape[0] to store the results
                 Ytrain_pred=np.empty([nclasses,Xtrain.shape[0]])
@@ -147,7 +158,34 @@ for file in files:
                 # Transpose the results to match the shape of the grid
                 Ytrain_pred=Ytrain_pred.T
                 Ytest_pred=Ytest_pred.T
-                print(Ytrain_pred.shape)
+                #print(Ytrain_pred.shape)
+
+            case "krigingOpt":
+                # calculate the number of classes
+                nclasses=len(np.unique(Ytrain))
+
+                # create the classifier
+                clf=isl.KrigOpt(Xtrain.T,krig_lambda=kr_lambda, alphak=None, Fk=None, ytrain=Ytrain)
+
+                # create a matrix of size nclases x Xtrain.shape[0] to store the results
+                Ytrain_pred=np.empty([nclasses,Xtrain.shape[0]])
+
+                # apply the classifier to the training and test data
+                for i in range(Xtrain.shape[0]):
+                    # store the results in the matrix.
+                    tempres=clf.class_prob(Xtrain[i])
+                    Ytrain_pred[:,i]=tempres
+
+                # create a matrix of size nclasses x Xtest.shape[0] to store the results
+                Ytest_pred=np.empty([nclasses,Xtest.shape[0]])
+                for i in range(Xtest.shape[0]):
+                    # store the results in the matrix.
+                    tempres=clf.class_prob(Xtest[i])
+                    Ytest_pred[:,i]=tempres
+                # Transpose the results to match the shape of the grid
+                Ytrain_pred=Ytrain_pred.T
+                Ytest_pred=Ytest_pred.T
+                #print(Ytrain_pred.shape)
 
             # case "krigingfun":
             #     kr_lambda = isl.KriggingFunctionClassifier(Xtrain.T, kr_lambda, Ytrain)
@@ -202,7 +240,7 @@ for file in files:
         if Ytrain_pred.shape[1]==2:
             Ytrain_pred=np.c_[Ytrain_pred,np.zeros(Ytrain_pred.shape[0])]
             Ytest_pred=np.c_[Ytest_pred,np.zeros(Ytest_pred.shape[0])]
-        print(Ytest_pred)
+        #print(Ytest_pred)
         
 
         colors=["r","g","b"]
@@ -237,7 +275,7 @@ for file in files:
             os.makedirs("Plots")
             
         # save the plot using the clasifier name and the database name as the name of the file
-        plt.savefig("Plots\\kriging\\"+clasif+"Lambda"+str(int(kr_lambda*10))+"_"+str(file)+".png")
+        plt.savefig("Plots\\kriging\\"+fileprefix+clasif+"Lambda"+str(int(kr_lambda*10))+"_"+str(file)+".png")
 
         #close the plot
         plt.close()

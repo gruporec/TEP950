@@ -5,22 +5,22 @@ import matplotlib.pyplot as plt
 import os
 
 # Number of classes
-n=3
+n=2
 
 # Number of samples per class
 m=[100,100,100,100,100]
 
 # Center of the classes
-c=[[0,0],[0.5,0.833],[1,0],[1,0],[0.5,0.5]]
+c=[[0,0],[0,0],[1,0],[1,0],[0.5,0.5]]
 
 # Standard deviation of the classes
-s=[0.5,0.5,0.5,0.3,0.3]
+s=[0,0,0.5,0.3,0.3]
 
 #size of the shapes
-size=[0,0,0,0.5,0.5]
+size=[1,2,0,0.5,0.5]
 
 # Shape of the classes
-shape=["circle","circle","circle"]
+shape=["square","square","circle"]
 
 #Get the folder where the script is
 folder=os.path.dirname(__file__)
