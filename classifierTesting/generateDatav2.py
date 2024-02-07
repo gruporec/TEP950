@@ -17,7 +17,7 @@ c=[[0,0],[1,0]]
 size=[1,1]
 
 # Shape of the classes
-shape=["circle", "square"]
+shape=["square", "square"]
 
 #Get the folder where the script is
 folder=os.path.dirname(__file__)
@@ -60,9 +60,9 @@ for i in range(n-1):
             # Add the square to the plot
             figs.append(plt.Rectangle([c[i][0]-size[i],c[i][1]-size[i]],2*size[i],2*size[i],color="black",fill=False))
             ax.add_patch(figs[i])
-        case _: # dot
-            # Create a dataframe with the values of the class
-            df=pd.DataFrame(np.random.normal(c[i],s[i],(m[i],len(c[i]))),columns=["a","b"])
+        case _: # Default case
+            print("Invalid shape")
+            sys.exit(1)
 
 
 print(data)

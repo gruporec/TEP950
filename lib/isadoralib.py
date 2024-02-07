@@ -531,9 +531,9 @@ class KrigOpt:
         y_pred = np.argmax(Prob)
         return y_pred
     
-class KrigOpt2:
-    '''Our proposed Bayesian-based Kriging classifier with optimized F, optimization problem approach.'''
-    def __init__(self, Xtrain,krig_lambda=0, alphak=None, Fk=None, ytrain=None):
+class DisFunClass:
+    '''Our proposed dissimilarity function classifier with optimized F and c.'''
+    def __init__(self, Xtrain, ytrain, lambd=0, ck=None, Fk=None):
         # Store the training data
         self.Xtrain = Xtrain
         if ytrain is None:
