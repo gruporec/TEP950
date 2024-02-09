@@ -623,8 +623,13 @@ class DisFunClass:
         # Get T that minimizes the QP function using OSQP
         T = qp.solve_qp(P, q.T, G, h, A, b, solver='osqp')
 
-        # calculate the value of the objective function
-        jx = 0.5*np.dot(T, np.dot(P.toarray(), T.T)) + np.dot(q.T, T)
+        #check if T is None
+        if T is None:
+            # set the value of the objective function to infinity
+            jx = np.inf
+        else:
+            # calculate the value of the objective function
+            jx = 0.5*np.dot(T, np.dot(P.toarray(), T.T)) + np.dot(q.T, T)
         return jx
     
     def calibrateCF(self):
@@ -647,6 +652,11 @@ class DisFunClass:
         b=np.zeros(self.Xtrain.shape[1]*np.unique(self.ytrain).shape[0])
         # Get the number of samples of each class
         Nk=[len(self.Dk[i][0]) for i in range(len(self.Dk))]
+
+        # get the max value of Jkx ignoring the infinite values
+        maxJkx=np.max([Jkx[i][j] for i in range(len(self.Dk)) for j in range(self.Xtrain.shape[1]) if Jkx[i][j]!=np.inf])
+        # replace the infinite values with ten times the max value
+        Jkx=[[maxJkx*10 if Jkx[i][j]==np.inf else Jkx[i][j] for j in range(self.Xtrain.shape[1])] for i in range(len(self.Dk))]
 
         # Put a row counter to 0
         row=0

@@ -218,8 +218,6 @@ if __name__ == '__main__':
                     ck=[np.sum(Ytrain==i)/2 for i in range(len(np.unique(Ytrain)))]
                     #create the classifier
                     clf=isl.DisFunClass(Xtrain.T, Ytrain,ck=ck,Fk=None, gam=kr_lambda)
-                    print("ck: " + str(clf.ck))
-                    print("Fk: " + str(clf.Fk))
                     
                     #apply the classifier to the training and test data to obtain the probabilities. these loops can be parallelized
                     with mp.Pool(mp.cpu_count()) as pool:
@@ -234,8 +232,6 @@ if __name__ == '__main__':
                 case "dissimilarity":
                     #create the classifier
                     clf=isl.DisFunClass(Xtrain.T, Ytrain,ck=None,Fk=None)
-                    print("ck: " + str(clf.ck))
-                    print("Fk: " + str(clf.Fk))
                     
                     #apply the classifier to the training and test data to obtain the probabilities. these loops can be parallelized
                     with mp.Pool(mp.cpu_count()) as pool:
