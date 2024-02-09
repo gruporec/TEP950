@@ -52,8 +52,8 @@ if __name__ == '__main__':
     clasifs=["krigingOpt"]
     clasifs=["dissimilarityWck", "dissimilarity","qda"]
 
-    # lambda for kriging 
-    kr_lambda=2
+    # gamma for kriging 
+    kr_gamma=2
 
     fileprefix=""
 
@@ -147,7 +147,7 @@ if __name__ == '__main__':
                     # alphak=None
 
                     # create the classifier
-                    clf=isl.KrigBayesian(Xtrain.T,krig_lambda=kr_lambda, alphak=alphak, Fk=None, ytrain=Ytrain)
+                    clf=isl.KrigBayesian(Xtrain.T,krig_gamma=kr_gamma, alphak=alphak, Fk=None, ytrain=Ytrain)
 
                     # create a matrix of size nclases x Xtrain.shape[0] to store the results
                     Ytrain_pred=np.empty([nclasses,Xtrain.shape[0]])
@@ -174,7 +174,7 @@ if __name__ == '__main__':
                     nclasses=len(np.unique(Ytrain))
 
                     # create the classifier
-                    clf=isl.KrigOpt(Xtrain.T,krig_lambda=kr_lambda, alphak=None, Fk=None, ytrain=Ytrain)
+                    clf=isl.KrigOpt(Xtrain.T,krig_gamma=kr_gamma, alphak=None, Fk=None, ytrain=Ytrain)
 
                     # create a matrix of size nclases x Xtrain.shape[0] to store the results
                     Ytrain_pred=np.empty([nclasses,Xtrain.shape[0]])
@@ -217,7 +217,7 @@ if __name__ == '__main__':
                     # calculate ck as the number of elements of each class divided by 2
                     ck=[np.sum(Ytrain==i)/2 for i in range(len(np.unique(Ytrain)))]
                     #create the classifier
-                    clf=isl.DisFunClass(Xtrain.T, Ytrain,ck=ck,Fk=None, gam=kr_lambda)
+                    clf=isl.DisFunClass(Xtrain.T, Ytrain,ck=ck,Fk=None, gam=kr_gamma)
                     print("ck: " + str(clf.ck))
                     print("Fk: " + str(clf.Fk))
                     
@@ -267,31 +267,24 @@ if __name__ == '__main__':
             Ytest_pred_class=np.argmax(Ytest_pred,axis=2)
 
             # create an array to find borders of the classes
-            Ytest_pred_class_border=np.zeros(Ytest_pred_class.shape)
+            Ytest_pred_class_border=np.ones(Ytest_pred_class.shape)
             for i in range(1,Ytest_pred_class.shape[0]-1):
                 for j in range(1,Ytest_pred_class.shape[1]-1):
-                    if Ytest_pred_class[i,j]!=Ytest_pred_class[i-1,j] or Ytest_pred_class[i,j]!=Ytest_pred_class[i+1,j] or Ytest_pred_class[i,j]!=Ytest_pred_class[i,j-1] or Ytest_pred_class[i,j]!=Ytest_pred_class[i,j+1]:
-                        Ytest_pred_class_border[i,j]=1
-
-
-
+                    if Ytest_pred_class[i,j]!=Ytest_pred_class[i-1,j] or Ytest_pred_class[i,j]!=Ytest_pred_class[i,j-1]:
+                        Ytest_pred_class_border[i,j]=0
+            
             # plot the borders of the classes using imshow
-            plt.imshow(Ytest_pred_class_border,extent=(xmin,xmax,ymin,ymax),origin="lower",alpha=0.3)
-
+            plt.imshow(Ytest_pred_class_border,extent=(xmin,xmax,ymin,ymax),origin="lower")
 
             # Plot the training data with the colors defined by the colors array
             plt.scatter(Xtrain[:,0],Xtrain[:,1],c=colors_pred,marker="x",s=10)
-            
-            #add a title
-            plt.title(clasif+" Lambda="+str(kr_lambda))
             
             #check if the plots folder exists and create it if it doesn't
             if not os.path.exists("Plots"):
                 os.makedirs("Plots")
 
-            plt.show()  
             # save the plot using the clasifier name and the database name as the name of the file
-            #plt.savefig("Plots\\dissim\\"+fileprefix+clasif+"Lambda"+str(int(kr_lambda*10))+"_"+str(file)+".png")
+            plt.savefig("Plots\\borders\\"+fileprefix+clasif+"gamma"+str(int(kr_gamma*10))+"_"+str(file)+".png")
 
             #close the plot
             plt.close()
