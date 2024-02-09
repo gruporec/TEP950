@@ -8,7 +8,7 @@ import os
 n=2
 
 # Number of samples
-m=1000
+m=20
 
 # Center of the shapes
 c=[[0,0],[1,0]]
