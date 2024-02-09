@@ -28,7 +28,7 @@ if __name__ == '__main__':
     sns.set(rc={'figure.figsize':(11.7,8.27)})
 
     #use agg when intended for saving the image and not for showing it
-    plt.switch_backend('agg')
+    #plt.switch_backend('agg')
 
     # ---CONFIGURATION---
 
@@ -260,26 +260,27 @@ if __name__ == '__main__':
             colors=["r","g","b"]
             colors_pred = [colors[col] for col in Ytrain]
 
-            # for each element in Ytest_pred
-            for i in range(Ytest_pred.shape[0]):
-                # get a ordered list of the probabilities
-                problist=np.argsort(Ytest_pred[i,:])
-                # get the difference between the first and second highest probabilities
-                diff=Ytest_pred[i,problist[-1]]-Ytest_pred[i,problist[-2]]
-                # if the difference is less than the accuracy margin
-                if diff<acc_margin:
-                    # divide the values by 2
-                    Ytest_pred[i,:]=Ytest_pred[i,:]/2
-
-
             # reshape the results to the grid shape
             Ytest_pred=Ytest_pred.reshape([xx.shape[0],xx.shape[1],3])
 
-            # plot the results using imshow
-            plt.imshow(Ytest_pred,extent=[xmin,xmax,ymin,ymax],origin="lower", alpha=0.5)
+            # create an array to store the class with the highest probability
+            Ytest_pred_class=np.argmax(Ytest_pred,axis=2)
+
+            # create an array to find borders of the classes
+            Ytest_pred_class_border=np.zeros(Ytest_pred_class.shape)
+            for i in range(1,Ytest_pred_class.shape[0]-1):
+                for j in range(1,Ytest_pred_class.shape[1]-1):
+                    if Ytest_pred_class[i,j]!=Ytest_pred_class[i-1,j] or Ytest_pred_class[i,j]!=Ytest_pred_class[i+1,j] or Ytest_pred_class[i,j]!=Ytest_pred_class[i,j-1] or Ytest_pred_class[i,j]!=Ytest_pred_class[i,j+1]:
+                        Ytest_pred_class_border[i,j]=1
+
+
+
+            # plot the borders of the classes using imshow
+            plt.imshow(Ytest_pred_class_border,extent=(xmin,xmax,ymin,ymax),origin="lower",alpha=0.3)
+
 
             # Plot the training data with the colors defined by the colors array
-            #plt.scatter(Xtrain[:,0],Xtrain[:,1],c=colors_pred,marker="x",s=100)
+            plt.scatter(Xtrain[:,0],Xtrain[:,1],c=colors_pred,marker="x",s=10)
             
             #add a title
             plt.title(clasif+" Lambda="+str(kr_lambda))
@@ -287,9 +288,10 @@ if __name__ == '__main__':
             #check if the plots folder exists and create it if it doesn't
             if not os.path.exists("Plots"):
                 os.makedirs("Plots")
-                
+
+            plt.show()  
             # save the plot using the clasifier name and the database name as the name of the file
-            plt.savefig("Plots\\dissim\\"+fileprefix+clasif+"Lambda"+str(int(kr_lambda*10))+"_"+str(file)+".png")
+            #plt.savefig("Plots\\dissim\\"+fileprefix+clasif+"Lambda"+str(int(kr_lambda*10))+"_"+str(file)+".png")
 
             #close the plot
             plt.close()

@@ -575,7 +575,7 @@ class DisFunClass:
         # Separate the training data by classes
         self.Dk=[Xtrain[:,np.where(ytrain == i)[0]] for i in range(np.unique(ytrain).shape[0])]
 
-        if (self.ck is None and self.Fk is None):
+        if (self.ck is None or self.Fk is None):
             self.calibrateCF()
     
     def calculateClassProb(self):
@@ -636,8 +636,8 @@ class DisFunClass:
         c=np.zeros(self.Xtrain.shape[1]+2*np.unique(self.ytrain).shape[0])
         c[:self.Xtrain.shape[1]]=1
 
-        # Build a list of bounds containing as many pairs of bounds (0,None) as samples in total followed by 2*K pairs of bounds (None,None), where K is the number of classes
-        bounds=[(0,None) for i in range(self.Xtrain.shape[1])]+[(None,None) for i in range(2*np.unique(self.ytrain).shape[0])]
+        # Build a list of bounds containing as many pairs of bounds (0,None) as samples in total for e followed by K pairs of bounds (Nk/2,None) for c, followed by K pairs (None,None) for F, where K is the number of classes
+        bounds=[(0,None) for i in range(self.Xtrain.shape[1])]+[(self.Dk[i].shape[1]/2,None) for i in range(len(self.Dk))]+[(None,None) for i in range(len(self.Dk))]
 
         # Build a sparse matrix A of size N*K x (N+2k), where N is the number of samples and k is the number of classes
         A=np.zeros([self.Xtrain.shape[1]*np.unique(self.ytrain).shape[0],self.Xtrain.shape[1]+2*np.unique(self.ytrain).shape[0]])
@@ -645,53 +645,78 @@ class DisFunClass:
 
         # Build a vector b of size N*K
         b=np.zeros(self.Xtrain.shape[1]*np.unique(self.ytrain).shape[0])
-
         # Get the number of samples of each class
-        Nk=[len(self.Dk[i]) for i in range(len(self.Dk))]
+        Nk=[len(self.Dk[i][0]) for i in range(len(self.Dk))]
 
         # Put a row counter to 0
         row=0
-        # Iterate over the classes
-        for k in range(np.unique(self.ytrain).shape[0]):
-            # Iterate over the samples
-            for i in range(self.Dk[k].shape[1]):
-                # Iterate over the classes
-                for r in range(np.unique(self.ytrain).shape[0]):
-                    # If k!=r
-                    if k!=r:
-                        # Set the values for this row. First value is -1 in the position corresponding to e_{x_{k,i}}. For that, get the sum of the number of samples of the previous classes and add the number of the sample
-                        A[row,int(i+np.sum(Nk[:k]))]=-1
-                        # Second value is Jkx[k][i] in the position corresponding to c_{k}, which is k positions after the last e position
-                        A[row,int(self.Xtrain.shape[1]+k)]=Jkx[k][i]
-                        # Third value is -Jkx[r][i] in the position corresponding to c_{r}, which is r positions after the last e position
-                        A[row,int(self.Xtrain.shape[1]+r)]=-Jkx[r][i]
-                        # Fourth value is -1 in the position corresponding to f_{gamma, c_k}, which is k positions after the last c position
-                        A[row,int(self.Xtrain.shape[1]+np.unique(self.ytrain).shape[0]+k)]=-1
-                        # Last value is 1 in the position corresponding to f_{gamma, c_r}, which is r positions after the last c position
-                        A[row,int(self.Xtrain.shape[1]+np.unique(self.ytrain).shape[0]+r)]=1
+        if self.ck is None:
+            # Iterate over the classes
+            for k in range(np.unique(self.ytrain).shape[0]):
+                # Iterate over the samples
+                for i in range(self.Dk[k].shape[1]):
+                    # Iterate over the classes
+                    for r in range(np.unique(self.ytrain).shape[0]):
+                        # If k!=r
+                        if k!=r:
+                            # Set the values for this row. First value is -1 in the position corresponding to e_{x_{k,i}}. For that, get the sum of the number of samples of the previous classes and add the number of the sample
+                            A[row,int(i+np.sum(Nk[:k]))]=-1
+                            # Second value is Jkx[k][i] in the position corresponding to c_{k}, which is k positions after the last e position
+                            A[row,int(self.Xtrain.shape[1]+k)]=Jkx[k][i]
+                            # Third value is -Jkx[r][i] in the position corresponding to c_{r}, which is r positions after the last e position
+                            A[row,int(self.Xtrain.shape[1]+r)]=-Jkx[r][i]
+                            # Fourth value is -1 in the position corresponding to f_{gamma, c_k}, which is k positions after the last c position
+                            A[row,int(self.Xtrain.shape[1]+np.unique(self.ytrain).shape[0]+k)]=-1
+                            # Last value is 1 in the position corresponding to f_{gamma, c_r}, which is r positions after the last c position
+                            A[row,int(self.Xtrain.shape[1]+np.unique(self.ytrain).shape[0]+r)]=1
 
-                    # Set the value for this row in b
-                    b[row]=-self.prk[k][r]
-                    
-                    # Increase the row counter
-                    row+=1
+                        # Set the value for this row in b
+                        b[row]=-self.prk[r][k]+1
+                        
+                        # Increase the row counter
+                        row+=1
+        else:
+            # Iterate over the classes
+            for k in range(np.unique(self.ytrain).shape[0]):
+                # Iterate over the samples
+                for i in range(self.Dk[k].shape[1]):
+                    # Iterate over the classes
+                    for r in range(np.unique(self.ytrain).shape[0]):
+                        # If k!=r
+                        if k!=r:
+                            # Set the values for this row. First value is -1 in the position corresponding to e_{x_{k,i}}. For that, get the sum of the number of samples of the previous classes and add the number of the sample
+                            A[row,int(i+np.sum(Nk[:k]))]=-1
+                            # # Second value is Jkx[k][i] in the position corresponding to c_{k}, which is k positions after the last e position
+                            # A[row,int(self.Xtrain.shape[1]+k)]=Jkx[k][i]
+                            # # Third value is -Jkx[r][i] in the position corresponding to c_{r}, which is r positions after the last e position
+                            # A[row,int(self.Xtrain.shape[1]+r)]=-Jkx[r][i]
+                            # Fourth value is -1 in the position corresponding to f_{gamma, c_k}, which is k positions after the last c position
+                            A[row,int(self.Xtrain.shape[1]+np.unique(self.ytrain).shape[0]+k)]=-1
+                            # Last value is 1 in the position corresponding to f_{gamma, c_r}, which is r positions after the last c position
+                            A[row,int(self.Xtrain.shape[1]+np.unique(self.ytrain).shape[0]+r)]=1
+
+                        # Set the value for this row in b
+                        b[row]=-self.prk[r][k]-Jkx[k][i]*self.ck[k]+Jkx[r][i]*self.ck[r]
+                        
+                        # Increase the row counter
+                        row+=1
         # Remove from A and b the rows that are all zeros
         b=b[~np.all(A.toarray()==0,axis=1)]
         A=A[~np.all(A.toarray()==0,axis=1)]
-        np.set_printoptions(threshold=sys.maxsize)
-        print(A.toarray())
-        print(b)
+
         # Solve the optimization problem
         res=linprog(c, A_ub=A.toarray(), b_ub=b, bounds=bounds, method='highs')
 
         # Get the optimized values for c, starting from the position of the last e and ending in the position of the last c
-        self.ck=res.x[self.Xtrain.shape[1]:self.Xtrain.shape[1]+np.unique(self.ytrain).shape[0]]
+        if self.ck is None:
+            self.ck=res.x[self.Xtrain.shape[1]:self.Xtrain.shape[1]+np.unique(self.ytrain).shape[0]]
 
         # Get the optimized values for F, starting from the position of the last c
-        logFk=res.x[self.Xtrain.shape[1]+np.unique(self.ytrain).shape[0]:]
+        if self.Fk is None:
+            logFk=res.x[self.Xtrain.shape[1]+np.unique(self.ytrain).shape[0]:]
 
-        # Calculate the values of F
-        self.Fk=[np.exp(logFk[i]) for i in range(np.unique(self.ytrain).shape[0])]
+            # Calculate the values of F
+            self.Fk=[np.exp(logFk[i]) for i in range(np.unique(self.ytrain).shape[0])]
 
     def classifyProbs(self, x):
         '''Applies the classifier to a feature vector x. Returns the probability of each class.
@@ -707,8 +732,12 @@ class DisFunClass:
         # Calculate the probability of each class
         Prob = [self.Fk[i] * np.exp(-self.ck[i] * jx[i]) * self.ClassProb[i] for i in range(len(self.Dk))]
         # Normalize the probabilities
-        Prob = [Prob[i] / np.sum(Prob) for i in range(len(self.Dk))]
-        return Prob
+        if np.sum(Prob) == 0:
+            print("Error calculating probabilities. Returning the same for all classes. Probabilities: ",Prob)
+            Probn = [1/len(self.Dk) for i in range(len(self.Dk))]
+        else:
+            Probn = [Prob[i] / np.sum(Prob) for i in range(len(self.Dk))]
+        return Probn
     
     def classify(self, x):
         '''Applies the classifier to a feature vector x. Returns the predicted class based on the value of the objective function.
