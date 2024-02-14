@@ -535,7 +535,7 @@ class KrigOpt:
     
 class DisFunClass:
     '''Our proposed dissimilarity function classifier with optimized F and c.'''
-    def __init__(self, Xtrain, ytrain, Xcal=None, ycal=None, gam=0, ck=None, Fk=None, ClassProb=None, ck_init=None, Fk_init=None):
+    def __init__(self, Xtrain, ytrain, Xcal=None, ycal=None, gam=0, ck=None, Fk=None, ClassProb=None):
         """
         Initialize the IsadoraLib class.
 
@@ -573,11 +573,6 @@ class DisFunClass:
         self.Fk = Fk
         # Store gamma value
         self.gam = gam
-
-        # Store initial ck value
-        self.ck_init = ck_init
-        # Store initial Fk value
-        self.Fk_init = Fk_init
 
         # Calculate the class probabilities if not provided
         if ClassProb is None:
@@ -655,19 +650,94 @@ class DisFunClass:
         '''Calibrates the values of c and F.'''
         # For each class, calculate the value of the objective function for each calibration sample over the training set; samples are stored as the columns of the matrix
         Jkx=[[self.getJ(self.Dk[i],self.Xcal[:,j]) for j in range(self.Xcal.shape[1])] for i in range(len(self.Dk))]
-        
-        # Create the initvalues for the optimization function. initial values are self.ckinit for c and self.Fkinit for F
-        initvalues=np.hstack([self.ck_init,self.Fk_init])
-        print(Jkx)
-        print(initvalues)
-        self.getErrorF(initvalues,Jkx)
-        sys.exit()
-        # Solve the optimization problem using a hill climbing algorithm
-        res=minimize(self.getErrorF,initvalues,args=Jkx,method='Nelder-Mead')
+
+        # Build a vector c containing as many ones as samples in the calibrating set followed by 2*K zeros, where K is the number of classes
+        c=np.zeros(self.Xcal.shape[1]+2*np.unique(self.ycal).shape[0])
+        c[:self.Xcal.shape[1]]=1
+
+        # Build a list of bounds containing as many pairs of bounds (0,None) as samples in total for e followed by K pairs of bounds (Nk/2,None) for c, followed by K pairs (None,None) for F, where K is the number of classes
+        bounds=[(0,None) for i in range(self.Xcal.shape[1])]+[(self.Dkcal[i].shape[1]/2,None) for i in range(len(self.Dkcal))]+[(None,None) for i in range(len(self.Dkcal))]
+
+        # Build a sparse matrix A of size N*K x (N+2k), where N is the number of samples and k is the number of classes
+        A=np.zeros([self.Xcal.shape[1]*np.unique(self.ycal).shape[0],self.Xcal.shape[1]+2*np.unique(self.ycal).shape[0]])
+        A = sp.csc_matrix(A)
+
+        # Build a vector b of size N*K
+        b=np.zeros(self.Xcal.shape[1]*np.unique(self.ycal).shape[0])
+        # Get the number of samples of each class in the calibrating set
+        Nk=[len(self.Dkcal[i][0]) for i in range(len(self.Dkcal))]
+
+        # # get the max value of Jkx ignoring the infinite values
+        # maxJkx=np.max([Jkx[i][j] for i in range(len(self.Dk)) for j in range(self.Xcal.shape[1]) if Jkx[i][j]!=np.inf])
+        # # replace the infinite values with ten times the max value
+        # Jkx=[[maxJkx*10 if Jkx[i][j]==np.inf else Jkx[i][j] for j in range(self.Xcal.shape[1])] for i in range(len(self.Dk))]
+
+        # Put a row counter to 0
+        row=0
+        if self.ck is None:
+            # Iterate over the classes
+            for k in range(np.unique(self.ycal).shape[0]):
+                # Iterate over the samples
+                for i in range(self.Dkcal[k].shape[1]):
+                    # Iterate over the classes
+                    for r in range(np.unique(self.ycal).shape[0]):
+                        # If k!=r
+                        if k!=r:
+                            # Set the values for this row. First value is -1 in the position corresponding to e_{x_{k,i}}. For that, get the sum of the number of samples of the previous classes and add the number of the sample
+                            A[row,int(i+np.sum(Nk[:k]))]=-1
+                            # Second value is Jkx[k][i] in the position corresponding to c_{k}, which is k positions after the last e position
+                            A[row,int(self.Xcal.shape[1]+k)]=Jkx[k][i]
+                            # Third value is -Jkx[r][i] in the position corresponding to c_{r}, which is r positions after the last e position
+                            A[row,int(self.Xcal.shape[1]+r)]=-Jkx[r][i]
+                            # Fourth value is -1 in the position corresponding to f_{gamma, c_k}, which is k positions after the last c position
+                            A[row,int(self.Xcal.shape[1]+np.unique(self.ycal).shape[0]+k)]=-1
+                            # Last value is 1 in the position corresponding to f_{gamma, c_r}, which is r positions after the last c position
+                            A[row,int(self.Xcal.shape[1]+np.unique(self.ycal).shape[0]+r)]=1
+
+                        # Set the value for this row in b
+                        b[row]=-self.prk[r][k]+1
+                        
+                        # Increase the row counter
+                        row+=1
+        else:
+            # Iterate over the classes
+            for k in range(np.unique(self.ycal).shape[0]):
+                # Iterate over the samples
+                for i in range(self.Dkcal[k].shape[1]):
+                    # Iterate over the classes
+                    for r in range(np.unique(self.ycal).shape[0]):
+                        # If k!=r
+                        if k!=r:
+                            # Set the values for this row. First value is -1 in the position corresponding to e_{x_{k,i}}. For that, get the sum of the number of samples of the previous classes and add the number of the sample
+                            A[row,int(i+np.sum(Nk[:k]))]=-1
+                            # # Second value is Jkx[k][i] in the position corresponding to c_{k}, which is k positions after the last e position
+                            # A[row,int(self.Xcal.shape[1]+k)]=Jkx[k][i]
+                            # # Third value is -Jkx[r][i] in the position corresponding to c_{r}, which is r positions after the last e position
+                            # A[row,int(self.Xcal.shape[1]+r)]=-Jkx[r][i]
+                            # Fourth value is -1 in the position corresponding to f_{gamma, c_k}, which is k positions after the last c position
+                            A[row,int(self.Xcal.shape[1]+np.unique(self.ycal).shape[0]+k)]=-1
+                            # Last value is 1 in the position corresponding to f_{gamma, c_r}, which is r positions after the last c position
+                            A[row,int(self.Xcal.shape[1]+np.unique(self.ycal).shape[0]+r)]=1
+
+                        # Set the value for this row in b
+                        b[row]=-self.prk[r][k]-Jkx[k][i]*self.ck[k]+Jkx[r][i]*self.ck[r]
+                        
+                        # Increase the row counter
+                        row+=1
+        # Remove from A and b the rows that are all zeros
+        b=b[~np.all(A.toarray()==0,axis=1)]
+        A=A[~np.all(A.toarray()==0,axis=1)]
+
+        # Solve the optimization problem
+        res=linprog(c, A_ub=A.toarray(), b_ub=b, bounds=bounds, method='highs')
+
+        # Get the optimized values for c, starting from the position of the last e and ending in the position of the last c
+        if self.ck is None:
+            self.ck=res.x[self.Xcal.shape[1]:self.Xcal.shape[1]+np.unique(self.ycal).shape[0]]
 
         # Get the optimized values for F, starting from the position of the last c
         if self.Fk is None:
-            logFk=res.x
+            logFk=res.x[self.Xcal.shape[1]+np.unique(self.ycal).shape[0]:]
 
             # Calculate the values of F
             self.Fk=[np.exp(logFk[i]) for i in range(np.unique(self.ycal).shape[0])]
@@ -706,35 +776,3 @@ class DisFunClass:
         # Select the class with the highest value of the objective function
         y_pred = np.argmax(Prob)
         return y_pred
-    
-
-    def getErrorF(self, initvals, Jkx):
-
-        # The first half of the initvals array is the value of c
-        ck=initvals[:len(initvals)//2]
-        # The second half of the initvals array is the value of F
-        f=initvals[len(initvals)//2:]
-
-        #get the number of elements in each calibration set
-        Nkcal=[self.Dkcal[i].shape[1] for i in range(len(self.Dkcal))]
-
-        #get the accumulated number of elements in each calibration set
-        Nkcalcum=np.cumsum(Nkcal)
-        # add a 0 at the beginning of the array
-        Nkcalcum=np.insert(Nkcalcum,0,0)
-        
-        print(Nkcalcum)
-
-        e=[]
-        for k in range(len(self.Dkcal)):
-            for i in range(len(self.Dkcal[k])):
-                for r in range(len(self.Dkcal)):
-                    if r!=k:
-                        print("r: ",r," k: ",k," i: ",i)
-                        e.append(self.prk[r][k]-f[k]+f[r]+self.ck[k]*Jkx[k][i+int(Nkcalcum[k])]-self.ck[r]*Jkx[r][i+int(Nkcalcum[k])])
-        print(e)
-        # if e>0, e=1; else e=0
-        e=[1 if i>0 else 0 for i in e]
-        print(e)
-        # return the sum of e
-        return np.sum(e)

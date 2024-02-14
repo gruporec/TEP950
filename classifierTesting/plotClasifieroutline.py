@@ -5,6 +5,7 @@ import sklearn.discriminant_analysis as sklda
 import sklearn.metrics as skmetrics
 import sklearn.decomposition as skdecomp
 from sklearn import neighbors
+from sklearn.model_selection import train_test_split
 import seaborn as sns
 import multiprocessing as mp
 import tqdm
@@ -47,17 +48,17 @@ if __name__ == '__main__':
     # clasifier types to use. Available types: "lda", "qda", "krigingfun","kriginglam"
     # "lda" and "qda" are the linear and quadratic discriminant analysis from sklearn
     # "krigingfun", "kriginglam" and "krigingqda" are the kriging based classifiers from isadoralib
-    clasifs=["lda","qda","krigingfun","kriginglam","nearestneighbours"]
-    clasifs=["qda","kriging"]
-    clasifs=["krigingOpt"]
-    clasifs=["dissimilarityWck", "dissimilarity","qda"]
+    clasifs=["dissimilarityWckCal","dissimilarityWck", "dissimilarity","qda"]
+    clasifs=["dissimilarityWckCal","dissimilarityWck", "dissimilarity"]
+    clasifs=["dissimilarityWckCalHC"]
 
     # gamma for kriging 
-    kr_gamma=2
+    kr_gamma=1
 
     fileprefix=""
 
-    # alpha for krig
+    # calibration/training split
+    train_split=0.5
 
     #databases to plot
     files=[3]
@@ -213,6 +214,47 @@ if __name__ == '__main__':
                     #convert the list to a numpy array
                     Ytrain_pred = np.array(Ytrain_pred)
                     Ytest_pred = np.array(Ytest_pred)
+                case "dissimilarityWckCalHC":
+
+                    # separate the training data into training and calibration data
+                    Xtrain, Xcal, Ytrain, Ycal = train_test_split(Xtrain, Ytrain, test_size=train_split, random_state=42, stratify=Ytrain)
+                    #get the value of ck for the dissimilarity function classifier
+                    ck=[np.sum(Ycal==i)/2 for i in range(len(np.unique(Ycal)))]
+
+                    # get the value of Fk for the dissimilarity function classifier as \frac{e^{\frac{1}{2}}}{(2\pi)^{d/2}|\Sigma_k|^{1/2}}
+                    Fk = [np.exp(0.5)/(np.power(2*np.pi, Xtrain.shape[1]/2)*np.sqrt(np.linalg.det(np.cov(Xtrain[Ytrain==i].T))) ) for i in range(len(np.unique(Ytrain)))]
+                    # create the dissimilarity function classifier
+                    clf=isl.DisFunClass(Xtrain.T, Ytrain, Xcal=Xcal.T, ycal=Ycal,ck=ck,Fk=None, gam=kr_gamma, ck_init=ck, Fk_init=Fk)
+                    #apply the classifier to the training and test data to obtain the probabilities. these loops can be parallelized
+                    with mp.Pool(mp.cpu_count()) as pool:
+                        Ytrain_pred = list(tqdm.tqdm(pool.imap(classify_probs, [(x, clf) for x in Xtrain]), total=len(Xtrain)))
+                    with mp.Pool(mp.cpu_count()) as pool:
+                        Ytest_pred = list(tqdm.tqdm(pool.imap(classify_probs, [(x, clf) for x in Xtest]), total=len(Xtest)))
+
+                    #convert the list to a numpy array
+                    Ytrain_pred = np.array(Ytrain_pred)
+                    Ytest_pred = np.array(Ytest_pred)
+
+                case "dissimilarityWckCal":
+
+                    # separate the training data into training and calibration data
+                    Xtrain, Xcal, Ytrain, Ycal = train_test_split(Xtrain, Ytrain, test_size=train_split, random_state=42, stratify=Ytrain)
+
+                    # calculate ck as the number of elements of each class divided by 2
+                    ck=[np.sum(Ytrain==i)/2 for i in range(len(np.unique(Ytrain)))]
+                    #create the classifier
+                    clf=isl.DisFunClass(Xtrain.T, Ytrain, Xcal=Xcal.T, ycal=Ycal, ck=ck, Fk=None, gam=kr_gamma)
+                    
+                    #apply the classifier to the training and test data to obtain the probabilities. these loops can be parallelized
+                    with mp.Pool(mp.cpu_count()) as pool:
+                        Ytrain_pred = list(tqdm.tqdm(pool.imap(classify_probs, [(x, clf) for x in Xtrain]), total=len(Xtrain)))
+                    with mp.Pool(mp.cpu_count()) as pool:
+                        Ytest_pred = list(tqdm.tqdm(pool.imap(classify_probs, [(x, clf) for x in Xtest]), total=len(Xtest)))
+
+                    
+                    #convert the list to a numpy array
+                    Ytrain_pred = np.array(Ytrain_pred)
+                    Ytest_pred = np.array(Ytest_pred)
                 case "dissimilarityWck":
                     # calculate ck as the number of elements of each class divided by 2
                     ck=[np.sum(Ytrain==i)/2 for i in range(len(np.unique(Ytrain)))]
@@ -270,7 +312,7 @@ if __name__ == '__main__':
             Ytest_pred_class_border=np.ones(Ytest_pred_class.shape)
             for i in range(1,Ytest_pred_class.shape[0]-1):
                 for j in range(1,Ytest_pred_class.shape[1]-1):
-                    if Ytest_pred_class[i,j]!=Ytest_pred_class[i-1,j] or Ytest_pred_class[i,j]!=Ytest_pred_class[i,j-1]:
+                    if Ytest_pred_class[i,j]!=Ytest_pred_class[i-1,j] or Ytest_pred_class[i,j]!=Ytest_pred_class[i,j-1] or Ytest_pred_class[i,j]!=Ytest_pred_class[i-1,j-1] or Ytest_pred_class[i,j]!=Ytest_pred_class[i+1,j]:
                         Ytest_pred_class_border[i,j]=0
             
             # plot the borders of the classes using imshow
@@ -283,8 +325,23 @@ if __name__ == '__main__':
             if not os.path.exists("Plots"):
                 os.makedirs("Plots")
 
+            # Form the name of the file
+            filename="Plots\\borders\\"+fileprefix+clasif
+            # If the classifier isn't qda, add the lambda value to the name; put two decimal places and remove the decimal point
+            if clasif!="qda":
+                filename+="Lambda"+"{:.2f}".format(kr_gamma).replace(".","")
+
+            # If the classifier is a calibrated dissimilarity function, add the calibration split to the name
+            if clasif=="dissimilarityWckCal" or clasif=="dissimilarityWckCalHC":
+                filename+="Cal"+"{:.2f}".format(train_split).replace(".","")
+            # Add the database number to the name
+            filename+="_"+str(file)+".png"
+
+            print("Saving plot to "+filename)
+            
+                
             # save the plot using the clasifier name and the database name as the name of the file
-            plt.savefig("Plots\\borders\\"+fileprefix+clasif+"gamma"+str(int(kr_gamma*10))+"_"+str(file)+".png")
+            plt.savefig(filename)
 
             #close the plot
             plt.close()
