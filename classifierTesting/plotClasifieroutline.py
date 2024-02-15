@@ -218,6 +218,7 @@ if __name__ == '__main__':
 
                     # separate the training data into training and calibration data
                     Xtrain, Xcal, Ytrain, Ycal = train_test_split(Xtrain, Ytrain, test_size=train_split, random_state=42, stratify=Ytrain)
+
                     #get the value of ck for the dissimilarity function classifier
                     ck=[np.sum(Ycal==i)/2 for i in range(len(np.unique(Ycal)))]
 
@@ -260,8 +261,6 @@ if __name__ == '__main__':
                     ck=[np.sum(Ytrain==i)/2 for i in range(len(np.unique(Ytrain)))]
                     #create the classifier
                     clf=isl.DisFunClass(Xtrain.T, Ytrain,ck=ck,Fk=None, gam=kr_gamma)
-                    print("ck: " + str(clf.ck))
-                    print("Fk: " + str(clf.Fk))
                     
                     #apply the classifier to the training and test data to obtain the probabilities. these loops can be parallelized
                     with mp.Pool(mp.cpu_count()) as pool:
@@ -276,8 +275,6 @@ if __name__ == '__main__':
                 case "dissimilarity":
                     #create the classifier
                     clf=isl.DisFunClass(Xtrain.T, Ytrain,ck=None,Fk=None)
-                    print("ck: " + str(clf.ck))
-                    print("Fk: " + str(clf.Fk))
                     
                     #apply the classifier to the training and test data to obtain the probabilities. these loops can be parallelized
                     with mp.Pool(mp.cpu_count()) as pool:
@@ -342,6 +339,5 @@ if __name__ == '__main__':
                 
             # save the plot using the clasifier name and the database name as the name of the file
             plt.savefig(filename)
-
             #close the plot
             plt.close()

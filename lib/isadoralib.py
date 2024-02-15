@@ -585,14 +585,14 @@ class DisFunClass:
         else:
             self.ClassProb=ClassProb
         
-        # For each class, get the difference between the log of its class probability and the log of each other class probability
-        self.prk=[[np.log(self.ClassProb[i])-np.log(self.ClassProb[j]) for j in range(np.unique(ytrain).shape[0])] for i in range(np.unique(ytrain).shape[0])]
+        # get the log of the class probabilities
+        self.pk=np.log(self.ClassProb)
         
         # Separate the training data by classes
-        self.Dk=[Xtrain[:,np.where(ytrain == i)[0]] for i in range(np.unique(ytrain).shape[0])]
+        self.Dk = [self.Xtrain[:, np.where(self.ytrain == i)[0]].T.tolist() for i in range(np.unique(self.ytrain).shape[0])]
 
         # Separate the calibrating data by classes
-        self.Dkcal=[self.Xcal[:,np.where(self.ycal == i)[0]] for i in range(np.unique(self.ycal).shape[0])]
+        self.Dkcal = [self.Xcal[:, np.where(self.ycal == i)[0]].T.tolist() for i in range(np.unique(self.ycal).shape[0])]
 
         if (self.ck is None or self.Fk is None):
             self.calibrateCF()
@@ -608,31 +608,31 @@ class DisFunClass:
     def getJ(self,Dk,x):
         '''Updates the matrices P, q, G, h and A for the training data Dk and the parameter gamma.'''
         # Get P matrix as a square matrix of size 2*N with a diagonal matrix of size N and value 2 in the upper left corner
-        P = np.zeros([2*Dk.shape[1], 2*Dk.shape[1]])
-        P[:Dk.shape[1], :Dk.shape[1]] = np.eye(Dk.shape[1])*2
+        P = np.zeros([2*len(Dk), 2*len(Dk)])
+        P[:len(Dk), :len(Dk)] = np.eye(len(Dk))*2
         # Matrix P as a sparse matrix
         P = sp.csc_matrix(P)
 
         # Get q vector of size 2*N+1 with gamma values in the last N elements
-        q = np.zeros([2*Dk.shape[1]])
-        q[Dk.shape[1]:2*Dk.shape[1]] = self.gam
+        q = np.zeros([2*len(Dk)])
+        q[len(Dk):2*len(Dk)] = self.gam
 
         # Get G matrix of size 2*N x 2*N with four identity matrices of size N. All identity matrices have negative sign except the upper left corner
-        G = np.zeros([2*Dk.shape[1], 2*Dk.shape[1]])
-        G[:Dk.shape[1], :Dk.shape[1]] = np.eye(Dk.shape[1])
-        G[Dk.shape[1]:2*Dk.shape[1], Dk.shape[1]:2*Dk.shape[1]] = -np.eye(Dk.shape[1])
-        G[Dk.shape[1]:2*Dk.shape[1], :Dk.shape[1]] = -np.eye(Dk.shape[1])
-        G[:Dk.shape[1], Dk.shape[1]:2*Dk.shape[1]] = -np.eye(Dk.shape[1])
+        G = np.zeros([2*len(Dk), 2*len(Dk)])
+        G[:len(Dk), :len(Dk)] = np.eye(len(Dk))
+        G[len(Dk):2*len(Dk), len(Dk):2*len(Dk)] = -np.eye(len(Dk))
+        G[len(Dk):2*len(Dk), :len(Dk)] = -np.eye(len(Dk))
+        G[:len(Dk), len(Dk):2*len(Dk)] = -np.eye(len(Dk))
         # G as a sparse matrix
         G = sp.csc_matrix(G)
 
         # Get h vector of size 2*N with zero values
-        h = np.zeros([2*Dk.shape[1]])
+        h = np.zeros([2*len(Dk)])
 
         # Get A matrix of size M+1 x 2*N with the training data matrix and a row of zeros and a 1 in the last column
-        A = np.zeros([Dk.shape[0]+1, 2*Dk.shape[1]])
-        A[:Dk.shape[0], :Dk.shape[1]] = Dk
-        A[Dk.shape[0], :Dk.shape[1]] = 1
+        A = np.zeros([len(Dk[0])+1, 2*len(Dk)])
+        A[:len(Dk[0]), :len(Dk)] = np.array(Dk).T
+        A[len(Dk[0]), :len(Dk)] = 1
         # A as a sparse matrix
         A = sp.csc_matrix(A)
         
@@ -658,11 +658,7 @@ class DisFunClass:
         
         # Create the initvalues for the optimization function. initial values are self.ckinit for c and self.Fkinit for F
         initvalues=np.hstack([self.ck_init,self.Fk_init])
-        print(Jkx)
-        print(initvalues)
-        self.getErrorF(initvalues,Jkx)
-        sys.exit()
-        # Solve the optimization problem using a hill climbing algorithm
+        # Solve the optimization problem using a Nelder-Mead algorithm
         res=minimize(self.getErrorF,initvalues,args=Jkx,method='Nelder-Mead')
 
         # Get the optimized values for F, starting from the position of the last c
@@ -716,25 +712,33 @@ class DisFunClass:
         f=initvals[len(initvals)//2:]
 
         #get the number of elements in each calibration set
-        Nkcal=[self.Dkcal[i].shape[1] for i in range(len(self.Dkcal))]
+        Nkcal=[len(self.Dkcal[i]) for i in range(len(self.Dkcal))]
 
         #get the accumulated number of elements in each calibration set
         Nkcalcum=np.cumsum(Nkcal)
         # add a 0 at the beginning of the array
         Nkcalcum=np.insert(Nkcalcum,0,0)
         
-        print(Nkcalcum)
 
-        e=[]
-        for k in range(len(self.Dkcal)):
-            for i in range(len(self.Dkcal[k])):
-                for r in range(len(self.Dkcal)):
-                    if r!=k:
-                        print("r: ",r," k: ",k," i: ",i)
-                        e.append(self.prk[r][k]-f[k]+f[r]+self.ck[k]*Jkx[k][i+int(Nkcalcum[k])]-self.ck[r]*Jkx[r][i+int(Nkcalcum[k])])
-        print(e)
-        # if e>0, e=1; else e=0
-        e=[1 if i>0 else 0 for i in e]
-        print(e)
+        pxk=[]
+        # for each element in the calibration set
+        for i in range(len(self.Xcal.T)):
+            # for each class
+            pk=[]
+            for k in range(len(self.Dkcal)):
+                # calculate the log probability of each class for each calibration sample
+                p=self.pk[k]+np.log(f[k])-ck[k]*Jkx[k][i]
+                # store the log probability
+                pk.append(p)
+            # store the log probabilities
+            pxk.append(pk)
+        
+        # obtain the class with the highest log probability for each calibration sample
+        y_pred = [np.argmax(pxk[i]) for i in range(len(self.Xcal.T))]
+
+        # get the elements of y_pred that are different from the actual class
+        err=[y_pred[i]!=self.ycal[i] for i in range(len(y_pred))]
+        # count the number of errors
+        e=np.sum(err)
         # return the sum of e
         return np.sum(e)

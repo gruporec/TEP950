@@ -5,13 +5,13 @@ import matplotlib.pyplot as plt
 import os
 
 # Number of classes
-n=2
+n=3
 
 # Number of samples
 m=20
 
 # Center of the shapes
-c=[[0,0],[1,0]]
+c=[[-1,-1],[1,1]]
 
 #size of the shapes
 size=[1,1]
