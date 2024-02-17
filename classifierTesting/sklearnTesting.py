@@ -31,6 +31,11 @@ if __name__ == '__main__':
     # Set dataset as the index
     results.set_index("Dataset", inplace=True)
 
+    # Create another dataframe to store the values of Fk and ck
+    Fkckdf = pd.DataFrame(columns=["Dataset", "Fk", "ck"])
+    # Set dataset as the index
+    Fkckdf.set_index("Dataset", inplace=True)
+
     # Select the sklearn toy datasets to use. Options are: "iris", "digits", "wine", "breast_cancer", "covtype"
     datasets=["iris", "digits", "wine", "breast_cancer", "covtype"]
     #datasets=["digits"]
@@ -45,7 +50,7 @@ if __name__ == '__main__':
     cal_size=0.5
 
     # Select the value of the gamma parameter for the dissimilarity function classifier
-    gam=0
+    gam=3
 
     # Default pca components to analize. 0 or None to not use pca
     pca_comp=None
@@ -161,6 +166,12 @@ if __name__ == '__main__':
         # apply the classifier to the test data
         with mp.Pool(mp.cpu_count()) as pool:
             y_pred = list(tqdm.tqdm(pool.imap(classify, [(x, clf) for x in X_test]), total=len(X_test)))
+
+        #Store the value of Fk and ck as a string
+        Fkstring=str(clf.Fk)
+        ckstring=str(clf.ck)
+        Fkckdf.loc[dataset, "Fk"] = Fkstring
+        Fkckdf.loc[dataset, "ck"] = ckstring
         
         # calculate the accuracy
         accuracydf = skmetrics.accuracy_score(y_test, y_pred)
@@ -172,4 +183,6 @@ if __name__ == '__main__':
 
     print(results)
     # Save the results to a csv file, including the test split ratio in the name
-    results.to_csv("sklearnTestResults"+"{:.2f}".format(test_size).replace(".","")+"gamma"+"{:.2f}".format(gam).replace(".","")+".csv")
+    results.to_csv("classifierTesting\\results\\sklearnTestResults"+"{:.2f}".format(test_size).replace(".","") + "Cal" + "{:.2f}".format(cal_size).replace(".","") + "gamma" + "{:.2f}".format(gam).replace(".","") + ".csv")
+    # Save the Fk and ck values to a csv file, including the test split ratio in the name
+    Fkckdf.to_csv("classifierTesting\\results\\FkckValuesTest"+"{:.2f}".format(test_size).replace(".","") + "Cal" + "{:.2f}".format(cal_size).replace(".","") + "gamma" + "{:.2f}".format(gam).replace(".","") + ".csv")

@@ -656,17 +656,29 @@ class DisFunClass:
         # For each class, calculate the value of the objective function for each calibration sample over the training set; samples are stored as the columns of the matrix
         Jkx=[[self.getJ(self.Dk[i],self.Xcal[:,j]) for j in range(self.Xcal.shape[1])] for i in range(len(self.Dk))]
         
+        # Calculate the log of Fk_init
+        fk_init=[np.log(self.Fk_init[i]) for i in range(len(self.Fk_init))]
+
         # Create the initvalues for the optimization function. initial values are self.ckinit for c and self.Fkinit for F
-        initvalues=np.hstack([self.ck_init,self.Fk_init])
+        initvalues=np.hstack([self.ck_init,fk_init])
+              
         # Solve the optimization problem using a Nelder-Mead algorithm
-        res=minimize(self.getErrorF,initvalues,args=Jkx,method='Nelder-Mead')
+        res=minimize(self.getErrorF,initvalues,args=Jkx,method='BFGS')
 
-        # Get the optimized values for F, starting from the position of the last c
-        if self.Fk is None:
-            logFk=res.x
+        # retrieve the optimized values for c
+        self.ck=res.x[:len(res.x)//2]
+        # retrieve the optimized values for Fk
+        logFk=res.x[len(res.x)//2:]
 
-            # Calculate the values of F
-            self.Fk=[np.exp(logFk[i]) for i in range(np.unique(self.ycal).shape[0])]
+        # Calculate the values of F
+        self.Fk=[np.exp(logFk[i]) for i in range(np.unique(self.ycal).shape[0])]
+
+
+        # If the error is the same as the initial error, use the initial values
+        if self.getErrorF(res.x,Jkx)==self.getErrorF(initvalues,Jkx):
+            self.ck=self.ck_init
+            self.Fk=self.Fk_init
+
 
     def classifyProbs(self, x):
         '''Applies the classifier to a feature vector x. Returns the probability of each class.
@@ -727,7 +739,7 @@ class DisFunClass:
             pk=[]
             for k in range(len(self.Dkcal)):
                 # calculate the log probability of each class for each calibration sample
-                p=self.pk[k]+np.log(f[k])-ck[k]*Jkx[k][i]
+                p=self.pk[k]+f[k]-ck[k]*Jkx[k][i]
                 # store the log probability
                 pk.append(p)
             # store the log probabilities
@@ -738,6 +750,9 @@ class DisFunClass:
 
         # get the elements of y_pred that are different from the actual class
         err=[y_pred[i]!=self.ycal[i] for i in range(len(y_pred))]
+
+        # divide the value of each error by the number of elements from its class
+        err=[err[i]/Nkcal[self.ycal[i]] for i in range(len(err))]
         # count the number of errors
         e=np.sum(err)
         # return the sum of e

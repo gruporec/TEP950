@@ -53,7 +53,7 @@ if __name__ == '__main__':
     clasifs=["dissimilarityWckCalHC"]
 
     # gamma for kriging 
-    kr_gamma=1
+    kr_gamma=2
 
     fileprefix=""
 
@@ -309,7 +309,7 @@ if __name__ == '__main__':
             Ytest_pred_class_border=np.ones(Ytest_pred_class.shape)
             for i in range(1,Ytest_pred_class.shape[0]-1):
                 for j in range(1,Ytest_pred_class.shape[1]-1):
-                    if Ytest_pred_class[i,j]!=Ytest_pred_class[i-1,j] or Ytest_pred_class[i,j]!=Ytest_pred_class[i,j-1] or Ytest_pred_class[i,j]!=Ytest_pred_class[i-1,j-1] or Ytest_pred_class[i,j]!=Ytest_pred_class[i+1,j]:
+                    if Ytest_pred_class[i,j]!=Ytest_pred_class[i-1,j] or Ytest_pred_class[i,j]!=Ytest_pred_class[i+1,j] or Ytest_pred_class[i,j]!=Ytest_pred_class[i,j-1] or Ytest_pred_class[i,j]!=Ytest_pred_class[i,j+1]:
                         Ytest_pred_class_border[i,j]=0
             
             # plot the borders of the classes using imshow
@@ -336,7 +336,6 @@ if __name__ == '__main__':
 
             print("Saving plot to "+filename)
             
-                
             # save the plot using the clasifier name and the database name as the name of the file
             plt.savefig(filename)
             #close the plot
