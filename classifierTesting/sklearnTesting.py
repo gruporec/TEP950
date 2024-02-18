@@ -50,7 +50,7 @@ if __name__ == '__main__':
     cal_size=0.5
 
     # Select the value of the gamma parameter for the dissimilarity function classifier
-    gam=3
+    gam=7
 
     # Default pca components to analize. 0 or None to not use pca
     pca_comp=None

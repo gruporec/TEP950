@@ -37,7 +37,7 @@ if __name__ == '__main__':
     datasetpath=os.path.dirname(__file__)+"\\dbv2\\"
 
     # grid step
-    gridstep=0.01
+    gridstep=0.001
 
     #margin for the plot
     margin=0.1
@@ -53,7 +53,7 @@ if __name__ == '__main__':
     clasifs=["dissimilarityWckCalHC"]
 
     # gamma for kriging 
-    kr_gamma=2
+    kr_gamma=3
 
     fileprefix=""
 
@@ -61,7 +61,7 @@ if __name__ == '__main__':
     train_split=0.5
 
     #databases to plot
-    files=[3]
+    files=[2]
 
     # ---END OF CONFIGURATION---
     for file in files:
@@ -331,12 +331,21 @@ if __name__ == '__main__':
             # If the classifier is a calibrated dissimilarity function, add the calibration split to the name
             if clasif=="dissimilarityWckCal" or clasif=="dissimilarityWckCalHC":
                 filename+="Cal"+"{:.2f}".format(train_split).replace(".","")
-            # Add the database number to the name
+            # Add the database number to the name and create another filename for the plot without the scatter
+            scatterlessfilename=filename+"_"+str(file)+"_scatterless.png"
             filename+="_"+str(file)+".png"
 
             print("Saving plot to "+filename)
             
             # save the plot using the clasifier name and the database name as the name of the file
             plt.savefig(filename)
+            #close the plot
+            plt.close()
+
+            #plot the borders of the classes using imshow
+            plt.imshow(Ytest_pred_class_border,extent=(xmin,xmax,ymin,ymax),origin="lower")
+            
+            # Save the plot without the scatter
+            plt.savefig(scatterlessfilename)
             #close the plot
             plt.close()

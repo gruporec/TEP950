@@ -37,7 +37,7 @@ if __name__ == '__main__':
     datasetpath=os.path.dirname(__file__)+"\\dbv2\\"
 
     # grid step
-    gridstep=0.01
+    gridstep=0.001
 
     #margin for the plot
     margin=0.1
@@ -52,9 +52,8 @@ if __name__ == '__main__':
     clasifs=["lda","qda","krigingfun","kriginglam","nearestneighbours"]
     clasifs=["qda","kriging"]
     clasifs=["krigingOpt"]
-    clasifs=["dissimilarityWck", "dissimilarity","qda"]
-    clasifs=["dissimilarityWckCal"]
-    clasifs=["dissimilarityWckCalHC"]
+    clasifs=["dissimilarity"]
+    #clasifs=["dissimilarity", "dissimilarityCal"]
 
     # lambda 
     kr_gamma=1
@@ -255,20 +254,26 @@ if __name__ == '__main__':
                     Ytrain_pred = np.array(Ytrain_pred)
                     Ytest_pred = np.array(Ytest_pred)
                 case "dissimilarity":
-                    #create the classifier
-                    clf=isl.DisFunClass(Xtrain.T, Ytrain,ck=None,Fk=None)
-                    
+
+                    # separate the training data into training and calibration data
+                    Xtrain, Xcal, Ytrain, Ycal = train_test_split(Xtrain, Ytrain, test_size=train_split, random_state=42, stratify=Ytrain)
+                    #get the value of ck for the dissimilarity function classifier
+                    ck=[np.sum(Ycal==i)/2 for i in range(len(np.unique(Ycal)))]
+
+                    # get the value of Fk for the dissimilarity function classifier as \frac{e^{\frac{1}{2}}}{(2\pi)^{d/2}|\Sigma_k|^{1/2}}
+                    Fk = [np.exp(0.5)/(np.power(2*np.pi, Xtrain.shape[1]/2)*np.sqrt(np.linalg.det(np.cov(Xtrain[Ytrain==i].T))) ) for i in range(len(np.unique(Ytrain)))]
+                    # create the dissimilarity function classifier
+                    clf=isl.DisFunClass(Xtrain.T, Ytrain, Xcal=Xcal.T, ycal=Ycal,ck=ck,Fk=Fk, gam=kr_gamma, ck_init=ck, Fk_init=Fk)
                     #apply the classifier to the training and test data to obtain the probabilities. these loops can be parallelized
                     with mp.Pool(mp.cpu_count()) as pool:
                         Ytrain_pred = list(tqdm.tqdm(pool.imap(classify_probs, [(x, clf) for x in Xtrain]), total=len(Xtrain)))
                     with mp.Pool(mp.cpu_count()) as pool:
                         Ytest_pred = list(tqdm.tqdm(pool.imap(classify_probs, [(x, clf) for x in Xtest]), total=len(Xtest)))
-
-                    
+                        
                     #convert the list to a numpy array
                     Ytrain_pred = np.array(Ytrain_pred)
                     Ytest_pred = np.array(Ytest_pred)
-                case "dissimilarityWckCalHC":
+                case "dissimilarityCal":
 
                     # separate the training data into training and calibration data
                     Xtrain, Xcal, Ytrain, Ycal = train_test_split(Xtrain, Ytrain, test_size=train_split, random_state=42, stratify=Ytrain)
