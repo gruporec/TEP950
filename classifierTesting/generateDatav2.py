@@ -5,19 +5,19 @@ import matplotlib.pyplot as plt
 import os
 
 # Number of classes
-n=3
+n=2
 
 # Number of samples
-m=20
+m=1000
 
 # Center of the shapes
-c=[[-1,-1],[1,1]]
+c=[[0,0],[1,1]]
 
 #size of the shapes
 size=[1,1]
 
 # Shape of the classes
-shape=["square", "square"]
+shape=["triangle", "square"]
 
 #Get the folder where the script is
 folder=os.path.dirname(__file__)
@@ -60,6 +60,19 @@ for i in range(n-1):
             # Add the square to the plot
             figs.append(plt.Rectangle([c[i][0]-size[i],c[i][1]-size[i]],2*size[i],2*size[i],color="black",fill=False))
             ax.add_patch(figs[i])
+        case "triangle":
+            # find the corners of the triangle
+            corners=[(c[i][0],c[i][1]+size[i]),(c[i][0]-size[i]*np.sqrt(3)/2,c[i][1]-size[i]/2),(c[i][0]+size[i]*np.sqrt(3)/2,c[i][1]-size[i]/2)]
+            # For each sample
+            for sample in data.iterrows():
+                # Check if the sample is in the triangle
+                if plt.Polygon(corners,closed=True).contains_point(sample[1][["a","b"]]):
+                    # If it is, change the class of the sample
+                    data.at[sample[0],"Y"]=i
+            # Add the triangle to the plot
+            figs.append(plt.Polygon(corners,closed=True,color="black",fill=False))
+            ax.add_patch(figs[i])
+
         case _: # Default case
             print("Invalid shape")
             sys.exit(1)

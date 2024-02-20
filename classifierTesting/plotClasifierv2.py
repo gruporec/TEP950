@@ -37,7 +37,7 @@ if __name__ == '__main__':
     datasetpath=os.path.dirname(__file__)+"\\dbv2\\"
 
     # grid step
-    gridstep=0.001
+    gridstep=0.01
 
     #margin for the plot
     margin=0.1
@@ -56,7 +56,7 @@ if __name__ == '__main__':
     #clasifs=["dissimilarity", "dissimilarityCal"]
 
     # lambda 
-    kr_gamma=1
+    kr_gamma=2
 
     # calibration/training split
     train_split=0.5
@@ -64,7 +64,7 @@ if __name__ == '__main__':
     fileprefix=""
 
     #databases to plot
-    files=[3]
+    files=[6]
 
     # ---END OF CONFIGURATION---
     for file in files:
@@ -341,7 +341,7 @@ if __name__ == '__main__':
                 filename+="Lambda"+"{:.2f}".format(kr_gamma).replace(".","")
 
             # If the classifier is a calibrated dissimilarity function, add the calibration split to the name
-            if clasif=="dissimilarityWckCal":
+            if clasif=="dissimilarityCal":
                 filename+="Cal"+"{:.2f}".format(train_split).replace(".","")
             # Add the database number to the name
             filename+="_"+str(file)+".png"
@@ -354,3 +354,14 @@ if __name__ == '__main__':
 
             #close the plot
             plt.close()
+
+            # Save the probabilities to a file
+            np.savetxt(filename.replace(".png",".csv"),Ytest_pred[:,:,0],delimiter=",")
+
+            # Save the probabilities to a file
+            np.savetxt(filename.replace(".png","_train.csv"),Ytrain_pred,delimiter=",")
+
+            # If the classifier is a calibrated dissimilarity function, save the values of ck and Fk
+            if clasif=="dissimilarityCal":
+                np.savetxt(filename.replace(".png","_ck.csv"),clf.ck,delimiter=",")
+                np.savetxt(filename.replace(".png","_Fk.csv"),clf.Fk,delimiter=",")

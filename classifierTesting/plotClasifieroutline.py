@@ -36,6 +36,10 @@ if __name__ == '__main__':
     #dataset file path
     datasetpath=os.path.dirname(__file__)+"\\dbv2\\"
 
+    # fix the limits of the plot
+    plotlims=(-2,2,-2,2)
+    plotlims=None
+
     # grid step
     gridstep=0.001
 
@@ -50,10 +54,10 @@ if __name__ == '__main__':
     # "krigingfun", "kriginglam" and "krigingqda" are the kriging based classifiers from isadoralib
     clasifs=["dissimilarityWckCal","dissimilarityWck", "dissimilarity","qda"]
     clasifs=["dissimilarityWckCal","dissimilarityWck", "dissimilarity"]
-    clasifs=["qda","dissimilarityWckCalHC", "dissimilarity"]
+    clasifs=["dissimilarityWckCalHC", "dissimilarity"]
 
     # gamma for kriging 
-    kr_gamma=0
+    kr_gamma=1
 
     fileprefix=""
 
@@ -73,17 +77,24 @@ if __name__ == '__main__':
         Xtrain=db[["a","b"]].to_numpy()
         Ytrain=db["Y"].to_numpy()
         
-        # get the limits in X
-        xmin=np.min(Xtrain[:,0])
-        xmax=np.max(Xtrain[:,0])
-        ymin=np.min(Xtrain[:,1])
-        ymax=np.max(Xtrain[:,1])
+        #if the limits of the plot are not fixed, calculate them
+        if plotlims==None:
+            # get the limits in X
+            xmin=np.min(Xtrain[:,0])
+            xmax=np.max(Xtrain[:,0])
+            ymin=np.min(Xtrain[:,1])
+            ymax=np.max(Xtrain[:,1])
 
-        # Calculate the limits of the plot adding a proportional margin
-        xmin=(xmin-margin*(xmax-xmin))
-        xmax=(xmax+margin*(xmax-xmin))
-        ymin=(ymin-margin*(ymax-ymin))
-        ymax=(ymax+margin*(ymax-ymin))
+            # Calculate the limits of the plot adding a proportional margin
+            xmin=(xmin-margin*(xmax-xmin))
+            xmax=(xmax+margin*(xmax-xmin))
+            ymin=(ymin-margin*(ymax-ymin))
+            ymax=(ymax+margin*(ymax-ymin))
+        else:
+            xmin=plotlims[0]
+            xmax=plotlims[1]
+            ymin=plotlims[2]
+            ymax=plotlims[3]
 
         # calculate the steps in x and y
         xstep=(xmax-xmin)*gridstep
@@ -356,3 +367,17 @@ if __name__ == '__main__':
             plt.savefig(scatterlessfilename)
             #close the plot
             plt.close()
+
+            # Save the probabilities to a file
+            np.savetxt(filename.replace(".png",".csv"),Ytest_pred[:,:,0],delimiter=",")
+
+            # Save the probabilities to a file
+            np.savetxt(filename.replace(".png","_train.csv"),Ytrain_pred,delimiter=",")
+
+            # If the classifier is a dissimilarity function, save the values of ck and Fk
+            if clasif=="dissimilarityWckCalHC" or clasif=="dissimilarityWckCal" or clasif=="dissimilarityWck" or clasif=="dissimilarity":
+                np.savetxt(filename.replace(".png","_ck.csv"),clf.ck,delimiter=",")
+                np.savetxt(filename.replace(".png","_Fk.csv"),clf.Fk,delimiter=",")
+            
+            #Save the border limits
+            np.savetxt(filename.replace(".png","_limits.csv"),np.array([xmin,xmax,ymin,ymax]),delimiter=",")
