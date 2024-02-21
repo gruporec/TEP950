@@ -56,7 +56,7 @@ if __name__ == '__main__':
     #clasifs=["dissimilarity", "dissimilarityCal"]
 
     # lambda 
-    kr_gamma=2
+    kr_gamma=1
 
     # calibration/training split
     train_split=0.5

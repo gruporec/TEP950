@@ -76,6 +76,11 @@ if __name__ == '__main__':
         # split the database into the data and the labels
         Xtrain=db[["a","b"]].to_numpy()
         Ytrain=db["Y"].to_numpy()
+
+        
+
+        # separate the training data into training and calibration data
+        Xtrain, Xcal, Ytrain, Ycal = train_test_split(Xtrain, Ytrain, test_size=train_split, random_state=42, stratify=Ytrain)
         
         #if the limits of the plot are not fixed, calculate them
         if plotlims==None:
@@ -132,8 +137,6 @@ if __name__ == '__main__':
                     Ytrain_pred=clf.predict_proba(Xtrain)
                     Ytest_pred=clf.predict_proba(Xtest)
                     #print(Ytrain_pred.shape)
-
-
                 
                 # case "customqda":
                 #     clf=isl.qdaClassifier(Xtrain.T, Ytrain)
@@ -227,9 +230,6 @@ if __name__ == '__main__':
                     Ytest_pred = np.array(Ytest_pred)
                 case "dissimilarityWckCalHC":
 
-                    # separate the training data into training and calibration data
-                    Xtrain, Xcal, Ytrain, Ycal = train_test_split(Xtrain, Ytrain, test_size=train_split, random_state=42, stratify=Ytrain)
-
                     #get the value of ck for the dissimilarity function classifier
                     ck=[np.sum(Ycal==i)/2 for i in range(len(np.unique(Ycal)))]
 
@@ -248,9 +248,6 @@ if __name__ == '__main__':
                     Ytest_pred = np.array(Ytest_pred)
 
                 case "dissimilarityWckCal":
-
-                    # separate the training data into training and calibration data
-                    Xtrain, Xcal, Ytrain, Ycal = train_test_split(Xtrain, Ytrain, test_size=train_split, random_state=42, stratify=Ytrain)
 
                     # calculate ck as the number of elements of each class divided by 2
                     ck=[np.sum(Ytrain==i)/2 for i in range(len(np.unique(Ytrain)))]

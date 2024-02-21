@@ -1,0 +1,6 @@
+Dataset,QDA accuracy,Dissim accuracy
+iris,0.9866666666666667,
+digits,0.9510567296996663,
+wine,0.8764044943820225,
+breast_cancer,0.9614035087719298,
+covtype,0.6446,
