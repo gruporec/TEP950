@@ -757,3 +757,229 @@ class DisFunClass:
         e=np.sum(err)
         # return the sum of e
         return np.sum(e)
+
+
+class DisFunClassF:
+    '''Our proposed dissimilarity function classifier with optimized F and c.'''
+    def __init__(self, Xtrain, ytrain, Xcal=None, ycal=None, gam=0, ck=None, Fk=None, ClassProb=None, ck_init=None, Fk_init=None):
+        """
+        Initialize the IsadoraLib class.
+
+        Parameters:
+        - Xtrain: numpy array, training data.
+        - ytrain: numpy array, training labels.
+        - gam: float, gamma value.
+        - ck: None or float, ck value.
+        - Fk: None or float, Fk value.
+        - ClassProb: None or numpy array, class probabilities.
+
+        Returns:
+        None
+        """
+        # Store the training data
+        self.Xtrain = Xtrain
+        if ytrain is None:
+            self.ytrain = np.zeros(Xtrain.shape[0])
+        else:
+            self.ytrain = ytrain
+
+        # Store calibrating data
+        if Xcal is None:
+            self.Xcal = Xtrain
+        else:
+            self.Xcal = Xcal
+        if ycal is None:
+            self.ycal = ytrain
+        else:
+            self.ycal = ycal
+
+        # Store ck value
+        self.ck = ck
+        # Store Fk value
+        self.Fk = Fk
+        # Store gamma value
+        self.gam = gam
+
+        # Store initial ck value
+        self.ck_init = ck_init
+        # Store initial Fk value
+        self.Fk_init = Fk_init
+
+        # Calculate the class probabilities if not provided
+        if ClassProb is None:
+            self.ClassProb=self.calculateClassProb()
+        else:
+            self.ClassProb=ClassProb
+        
+        # get the log of the class probabilities
+        self.pk=np.log(self.ClassProb)
+        
+        # Separate the training data by classes
+        self.Dk = [self.Xtrain[:, np.where(self.ytrain == i)[0]].T.tolist() for i in range(np.unique(self.ytrain).shape[0])]
+
+        # Separate the calibrating data by classes
+        self.Dkcal = [self.Xcal[:, np.where(self.ycal == i)[0]].T.tolist() for i in range(np.unique(self.ycal).shape[0])]
+
+        if (self.ck is None or self.Fk is None):
+            self.calibrateCF()
+    
+    def calculateClassProb(self):
+        '''Calculates the class probabilities from the training data.'''
+        # get the number of classes
+        nclases = np.unique(self.ytrain).shape[0]
+        # calculate the class probabilities
+        ClassProb=[np.sum(self.ytrain == i)/self.ytrain.shape[0] for i in range(nclases)]
+        return ClassProb
+    
+    def getJ(self,Dk,x):
+        '''Updates the matrices P, q, G, h and A for the training data Dk and the parameter gamma.'''
+        # Get P matrix as a square matrix of size 2*N with a diagonal matrix of size N and value 2 in the upper left corner
+        P = np.zeros([2*len(Dk), 2*len(Dk)])
+        P[:len(Dk), :len(Dk)] = np.eye(len(Dk))*2
+        # Matrix P as a sparse matrix
+        P = sp.csc_matrix(P)
+
+        # Get q vector of size 2*N+1 with gamma values in the last N elements
+        q = np.zeros([2*len(Dk)])
+        q[len(Dk):2*len(Dk)] = self.gam
+
+        # Get G matrix of size 2*N x 2*N with four identity matrices of size N. All identity matrices have negative sign except the upper left corner
+        G = np.zeros([2*len(Dk), 2*len(Dk)])
+        G[:len(Dk), :len(Dk)] = np.eye(len(Dk))
+        G[len(Dk):2*len(Dk), len(Dk):2*len(Dk)] = -np.eye(len(Dk))
+        G[len(Dk):2*len(Dk), :len(Dk)] = -np.eye(len(Dk))
+        G[:len(Dk), len(Dk):2*len(Dk)] = -np.eye(len(Dk))
+        # G as a sparse matrix
+        G = sp.csc_matrix(G)
+
+        # Get h vector of size 2*N with zero values
+        h = np.zeros([2*len(Dk)])
+
+        # Get A matrix of size M+1 x 2*N with the training data matrix and a row of zeros and a 1 in the last column
+        A = np.zeros([len(Dk[0])+1, 2*len(Dk)])
+        A[:len(Dk[0]), :len(Dk)] = np.array(Dk).T
+        A[len(Dk[0]), :len(Dk)] = 1
+        # A as a sparse matrix
+        A = sp.csc_matrix(A)
+        
+        # Create an extended feature vector with a 1
+        b = np.hstack([x, 1])
+
+        # Get T that minimizes the QP function using OSQP
+        T = qp.solve_qp(P, q.T, G, h, A, b, solver='osqp')
+
+        #check if T is None
+        if T is None:
+            # set the value of the objective function to infinity
+            jx = np.inf
+        else:
+            # calculate the value of the objective function
+            jx = 0.5*np.dot(T, np.dot(P.toarray(), T.T)) + np.dot(q.T, T)
+        return jx
+    
+    def calibrateCF(self):
+        '''Calibrates the values of c and F.'''
+        # For each class, calculate the value of the objective function for each calibration sample over the training set; samples are stored as the columns of the matrix
+        Jkx=[[self.getJ(self.Dk[i],self.Xcal[:,j]) for j in range(self.Xcal.shape[1])] for i in range(len(self.Dk))]
+        
+        # Calculate the log of Fk_init
+        fk_init=[np.log(self.Fk_init[i]) for i in range(len(self.Fk_init))]
+
+        # Create the initvalues for the optimization function. initial values are self.ckinit for c and self.Fkinit for F
+        initvalues=np.hstack([self.ck_init,fk_init])
+              
+        # Solve the optimization problem using a Nelder-Mead algorithm
+        res=minimize(self.getErrorF,initvalues,args=Jkx,method='BFGS')
+
+        # retrieve the optimized values for c
+        self.ck=res.x[:len(res.x)//2]
+        # retrieve the optimized values for Fk
+        logFk=res.x[len(res.x)//2:]
+
+        # Calculate the values of F
+        self.Fk=[np.exp(logFk[i]) for i in range(np.unique(self.ycal).shape[0])]
+
+
+        # If the error is the same as the initial error, use the initial values
+        if self.getErrorF(res.x,Jkx)==self.getErrorF(initvalues,Jkx):
+            self.ck=self.ck_init
+            self.Fk=self.Fk_init
+
+
+    def classifyProbs(self, x):
+        '''Applies the classifier to a feature vector x. Returns the probability of each class.
+        
+        Args:
+            x (list): The feature vector to classify.
+            
+        Returns:
+            list: The probability of each class.
+        '''
+        # Calculate the value of the objective function for each class
+        jx = [self.getJ(self.Dk[i], x) for i in range(len(self.Dk))]
+        # Calculate the probability of each class
+        Prob = [self.Fk[i] * np.exp(-self.ck[i] * jx[i]) * self.ClassProb[i] for i in range(len(self.Dk))]
+        # Normalize the probabilities
+        if np.sum(Prob) == 0:
+            Probn = [1/len(self.Dk) for i in range(len(self.Dk))]
+        else:
+            Probn = [Prob[i] / np.sum(Prob) for i in range(len(self.Dk))]
+        return Probn
+    
+    def classify(self, x):
+        '''Applies the classifier to a feature vector x. Returns the predicted class based on the value of the objective function.
+
+        Parameters:
+        x (numpy.ndarray): The feature vector to classify.
+
+        Returns:
+        int: The predicted class based on the value of the objective function.
+        '''
+        # Apply the classifier to x
+        Prob = self.classifyProbs(x)
+        # Select the class with the highest value of the objective function
+        y_pred = np.argmax(Prob)
+        return y_pred
+    
+
+    def getErrorF(self, initvals, Jkx):
+
+        # The first half of the initvals array is the value of c
+        ck=initvals[:len(initvals)//2]
+        # The second half of the initvals array is the value of F
+        f=initvals[len(initvals)//2:]
+
+        #get the number of elements in each calibration set
+        Nkcal=[len(self.Dkcal[i]) for i in range(len(self.Dkcal))]
+
+        #get the accumulated number of elements in each calibration set
+        Nkcalcum=np.cumsum(Nkcal)
+        # add a 0 at the beginning of the array
+        Nkcalcum=np.insert(Nkcalcum,0,0)
+        
+
+        pxk=[]
+        # for each element in the calibration set
+        for i in range(len(self.Xcal.T)):
+            # for each class
+            pk=[]
+            for k in range(len(self.Dkcal)):
+                # calculate the log probability of each class for each calibration sample
+                p=self.pk[k]+f[k]-ck[k]*Jkx[k][i]
+                # store the log probability
+                pk.append(p)
+            # store the log probabilities
+            pxk.append(pk)
+        
+        # obtain the class with the highest log probability for each calibration sample
+        y_pred = [np.argmax(pxk[i]) for i in range(len(self.Xcal.T))]
+
+        # get the elements of y_pred that are different from the actual class
+        err=[y_pred[i]!=self.ycal[i] for i in range(len(y_pred))]
+
+        # divide the value of each error by the number of elements from its class
+        err=[err[i]/Nkcal[self.ycal[i]] for i in range(len(err))]
+        # count the number of errors
+        e=np.sum(err)
+        # return the sum of e
+        return np.sum(e)

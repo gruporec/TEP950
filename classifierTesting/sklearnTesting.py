@@ -50,11 +50,19 @@ if __name__ == '__main__':
     cal_size=0.5
 
     # Select the value of the gamma parameter for the dissimilarity function classifier
-    gam=7
+    gam=19
 
     # Default pca components to analize. 0 or None to not use pca
     pca_comp=None
 
+    Alreadysaved=False
+    knownCK=None
+    knownFK=None
+    # If there is a file with the results, load the preprocessed FK and CK values and change the Alreadysaved flag to True
+    if os.path.exists("classifierTesting\\results\\FkckValuesTest"+"{:.2f}".format(test_size).replace(".","") + "Cal" + "{:.2f}".format(cal_size).replace(".","") + "gamma" + "{:.2f}".format(7).replace(".","") + ".csv"):
+        Fkckdf = pd.read_csv("classifierTesting\\results\\FkckValuesTest"+"{:.2f}".format(test_size).replace(".","") + "Cal" + "{:.2f}".format(cal_size).replace(".","") + "gamma" + "{:.2f}".format(7).replace(".","") + ".csv")
+        Fkckdf.set_index("Dataset", inplace=True)
+        Alreadysaved=True
 
     # For each selected dataset
     for dataset in datasets:
@@ -122,6 +130,13 @@ if __name__ == '__main__':
                 
             case _:
                 raise ValueError("Invalid dataset name")
+
+        # If already saved, get the values of Fk and ck
+        if Alreadysaved:
+            knownCK=eval(Fkckdf.loc[dataset, "ck"])
+            knownFK=eval(Fkckdf.loc[dataset, "Fk"])
+            print("Ck: ", knownCK)
+            print("Fk: ", knownFK)
         
         # If n_samples is not None and n_samples>0, select a random subset of the data
         if n_samples is not None and n_samples>0:
@@ -150,8 +165,27 @@ if __name__ == '__main__':
         # apply the classifier to the test data
         y_pred = clfqda.predict(X_test)
         # calculate the accuracy
-        accuracyqda = skmetrics.accuracy_score(y_test, y_pred)
+        accuracyqda = skmetrics.balanced_accuracy_score(y_test, y_pred)
         print(f"Accuracy for {dataset} using QDA: {accuracyqda}")
+
+        # Count the number of samples in each class
+        Nk=[np.sum(y_test==i) for i in range(len(np.unique(y_test)))]
+
+        # Create a list that's 1 if the sample is misclassified and 0 if it's correctly classified
+        err=[(y_test[i]!=y_pred[i]) for i in range(len(y_test))]
+
+        # Divide the number of misclassified samples by the total number of samples in each class
+        err=[err[i]/Nk[y_test[i]] for i in range(len(y_test))]
+
+        # sum the values of err grouping by the value of y_test
+        err=[np.sum([err[i] for i in range(len(y_test)) if y_test[i]==j]) for j in range(len(np.unique(y_test)))]
+
+        #invert the values of err to get the class accuracy
+        err=[1-i for i in err]
+
+        print(f"Class accuracy for {dataset} using QDA: {err}")
+
+
 
         # add the accuracy to the results dataframe
         results.loc[dataset, "QDA accuracy"] = accuracyqda
@@ -162,7 +196,7 @@ if __name__ == '__main__':
         # get the value of Fk for the dissimilarity function classifier as \frac{e^{\frac{1}{2}}}{(2\pi)^{d/2}|\Sigma_k|^{1/2}}
         Fk = [np.exp(0.5)/(np.power(2*np.pi, X_train.shape[1]/2)*np.sqrt(np.linalg.det(np.cov(X_train[y_train==i].T))) ) for i in range(len(np.unique(y_train)))]
         # create the dissimilarity function classifier
-        clf=isl.DisFunClass(X_train.T, y_train, Xcal=X_cal.T, ycal=y_cal,ck=ck,Fk=None, gam=gam, ck_init=ck, Fk_init=Fk)
+        clf=isl.DisFunClass(X_train.T, y_train, Xcal=X_cal.T, ycal=y_cal,ck=knownCK,Fk=knownFK, gam=gam, ck_init=ck, Fk_init=Fk)
         # apply the classifier to the test data
         with mp.Pool(mp.cpu_count()) as pool:
             y_pred = list(tqdm.tqdm(pool.imap(classify, [(x, clf) for x in X_test]), total=len(X_test)))
@@ -174,9 +208,26 @@ if __name__ == '__main__':
         Fkckdf.loc[dataset, "ck"] = ckstring
         
         # calculate the accuracy
-        accuracydf = skmetrics.accuracy_score(y_test, y_pred)
+        accuracydf = skmetrics.balanced_accuracy_score(y_test, y_pred)
 
         print(f"Accuracy for {dataset} using Dissimilarity Function: {accuracydf}")
+
+        # Count the number of samples in each class
+        Nk=[np.sum(y_test==i) for i in range(len(np.unique(y_test)))]
+
+        # Create a list that's 1 if the sample is misclassified and 0 if it's correctly classified
+        err=[(y_test[i]!=y_pred[i]) for i in range(len(y_test))]
+        # Divide the number of misclassified samples by the total number of samples in each class
+        err=[err[i]/Nk[y_test[i]] for i in range(len(y_test))]
+        
+        # sum the values of err grouping by the value of y_test
+        err=[np.sum([err[i] for i in range(len(y_test)) if y_test[i]==j]) for j in range(len(np.unique(y_test)))]
+
+        #invert the values of err to get the class accuracy
+        err=[1-i for i in err]
+
+        print(f"Class accuracy for {dataset} using Dissimilarity Function: {err}")
+        
 
         # add the accuracy to the results dataframe
         results.loc[dataset, "Dissim accuracy"] = accuracydf

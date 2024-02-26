@@ -50,7 +50,7 @@ if __name__ == '__main__':
     cal_size=0.5
 
     # Select the value of the gamma parameter for the dissimilarity function classifier
-    gam=7
+    gam=1
 
     # Default pca components to analize. 0 or None to not use pca
     pca_comp=None
@@ -146,16 +146,79 @@ if __name__ == '__main__':
         # create the qda classifier
         clfqda = sklda.QuadraticDiscriminantAnalysis()
         # fit the classifier to the training data  
-        clfqda.fit(X_t, y_t)
+        clfqda.fit(X_train, y_train)
         # apply the classifier to the test data
         y_pred = clfqda.predict(X_test)
         # calculate the accuracy
         accuracyqda = skmetrics.balanced_accuracy_score(y_test, y_pred)
         print(f"Accuracy for {dataset} using QDA: {accuracyqda}")
 
+        # Count the number of samples in each class
+        Nk=[np.sum(y_test==i) for i in range(len(np.unique(y_test)))]
+
+        # Create a list that's 1 if the sample is misclassified and 0 if it's correctly classified
+        err=[(y_test[i]!=y_pred[i]) for i in range(len(y_test))]
+
+        # Divide the number of misclassified samples by the total number of samples in each class
+        err=[err[i]/Nk[y_test[i]] for i in range(len(y_test))]
+
+        # sum the values of err grouping by the value of y_test
+        err=[np.sum([err[i] for i in range(len(y_test)) if y_test[i]==j]) for j in range(len(np.unique(y_test)))]
+
+        #invert the values of err to get the class accuracy
+        err=[1-i for i in err]
+
+        print(f"Class accuracy for {dataset} using QDA: {err}")
+
+
+
         # add the accuracy to the results dataframe
         results.loc[dataset, "QDA accuracy"] = accuracyqda
 
+        #get the value of ck for the dissimilarity function classifier
+        ck=[np.sum(y_train==i)/2 for i in range(len(np.unique(y_train)))]
+
+        # get the value of Fk for the dissimilarity function classifier as \frac{e^{\frac{1}{2}}}{(2\pi)^{d/2}|\Sigma_k|^{1/2}}
+        Fk = [np.exp(0.5)/(np.power(2*np.pi, X_train.shape[1]/2)*np.sqrt(np.linalg.det(np.cov(X_train[y_train==i].T))) ) for i in range(len(np.unique(y_train)))]
+        # create the dissimilarity function classifier
+        clf=isl.DisFunClass(X_train.T, y_train, Xcal=X_cal.T, ycal=y_cal,ck=ck,Fk=Fk, gam=gam, ck_init=ck, Fk_init=Fk)
+        # apply the classifier to the test data
+        with mp.Pool(mp.cpu_count()) as pool:
+            y_pred = list(tqdm.tqdm(pool.imap(classify, [(x, clf) for x in X_test]), total=len(X_test)))
+
+        #Store the value of Fk and ck as a string
+        Fkstring=str(clf.Fk)
+        ckstring=str(clf.ck)
+        Fkckdf.loc[dataset, "Fk"] = Fkstring
+        Fkckdf.loc[dataset, "ck"] = ckstring
+        
+        # calculate the accuracy
+        accuracydf = skmetrics.balanced_accuracy_score(y_test, y_pred)
+
+        print(f"Accuracy for {dataset} using Dissimilarity Function: {accuracydf}")
+
+        # Count the number of samples in each class
+        Nk=[np.sum(y_test==i) for i in range(len(np.unique(y_test)))]
+
+        # Create a list that's 1 if the sample is misclassified and 0 if it's correctly classified
+        err=[(y_test[i]!=y_pred[i]) for i in range(len(y_test))]
+        # Divide the number of misclassified samples by the total number of samples in each class
+        err=[err[i]/Nk[y_test[i]] for i in range(len(y_test))]
+        
+        # sum the values of err grouping by the value of y_test
+        err=[np.sum([err[i] for i in range(len(y_test)) if y_test[i]==j]) for j in range(len(np.unique(y_test)))]
+
+        #invert the values of err to get the class accuracy
+        err=[1-i for i in err]
+
+        print(f"Class accuracy for {dataset} using Dissimilarity Function: {err}")
+        
+
+        # add the accuracy to the results dataframe
+        results.loc[dataset, "Dissim accuracy"] = accuracydf
+
     print(results)
     # Save the results to a csv file, including the test split ratio in the name
-    results.to_csv("classifierTesting\\results\\qdares.csv")
+    results.to_csv("classifierTesting\\resultsLocked\\sklearnTestResults"+"{:.2f}".format(test_size).replace(".","") + "Cal" + "{:.2f}".format(cal_size).replace(".","") + "gamma" + "{:.2f}".format(gam).replace(".","") + ".csv")
+    # Save the Fk and ck values to a csv file, including the test split ratio in the name
+    Fkckdf.to_csv("classifierTesting\\resultsLocked\\FkckValuesTest"+"{:.2f}".format(test_size).replace(".","") + "Cal" + "{:.2f}".format(cal_size).replace(".","") + "gamma" + "{:.2f}".format(gam).replace(".","") + ".csv")
