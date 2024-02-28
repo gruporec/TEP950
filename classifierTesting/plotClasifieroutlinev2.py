@@ -54,7 +54,7 @@ if __name__ == '__main__':
     clasifs=["dissimilarityF"]
 
     # gamma for kriging 
-    kr_gammas=[0]
+    kr_gammas=[0,1]
 
     fileprefix=""
 
@@ -210,18 +210,18 @@ if __name__ == '__main__':
                         case "dissimilarity":
                             
                             # separate the training data into training and calibration data
-                            Xtrain, Xcal, Ytrain, Ycal = train_test_split(Xtrain, Ytrain, test_size=train_split, random_state=42, stratify=Ytrain)
+                            Xt, Xcal, Yt, Ycal = train_test_split(Xtrain, Ytrain, test_size=train_split, random_state=42, stratify=Ytrain)
 
                             #get the value of ck for the dissimilarity function classifier
                             ck=[np.sum(Ycal==i)/2 for i in range(len(np.unique(Ycal)))]
 
                             # get the value of Fk for the dissimilarity function classifier as \frac{e^{\frac{1}{2}}}{(2\pi)^{d/2}|\Sigma_k|^{1/2}}
-                            Fk = [np.exp(0.5)/(np.power(2*np.pi, Xtrain.shape[1]/2)*np.sqrt(np.linalg.det(np.cov(Xtrain[Ytrain==i].T))) ) for i in range(len(np.unique(Ytrain)))]
+                            Fk = [np.exp(0.5)/(np.power(2*np.pi, Xt.shape[1]/2)*np.sqrt(np.linalg.det(np.cov(Xt[Yt==i].T))) ) for i in range(len(np.unique(Yt)))]
                             # create the dissimilarity function classifier
-                            clf=isl.DisFunClass(Xtrain.T, Ytrain, Xcal=Xcal.T, ycal=Ycal,ck=ck,Fk=Fk, gam=kr_gamma, ck_init=ck, Fk_init=Fk)
+                            clf=isl.DisFunClass(Xt.T, Yt, Xcal=Xcal.T, ycal=Ycal,ck=ck,Fk=Fk, gam=kr_gamma, ck_init=ck, Fk_init=Fk)
                             #apply the classifier to the training and test data to obtain the probabilities. these loops can be parallelized
                             with mp.Pool(mp.cpu_count()) as pool:
-                                Ytrain_pred = list(tqdm.tqdm(pool.imap(classify_probs, [(x, clf) for x in Xtrain]), total=len(Xtrain)))
+                                Ytrain_pred = list(tqdm.tqdm(pool.imap(classify_probs, [(x, clf) for x in Xt]), total=len(Xtrain)))
                             with mp.Pool(mp.cpu_count()) as pool:
                                 Ytest_pred = list(tqdm.tqdm(pool.imap(classify_probs, [(x, clf) for x in Xtest]), total=len(Xtest)))
 
@@ -231,15 +231,14 @@ if __name__ == '__main__':
                         case "dissimilarityF":
                             
                             # separate the training data into training and calibration data
-                            Xtrain, Xcal, Ytrain, Ycal = train_test_split(Xtrain, Ytrain, test_size=train_split, random_state=42, stratify=Ytrain)
+                            #Xt, Xcal, Yt, Ycal = train_test_split(Xtrain, Ytrain, test_size=train_split, random_state=42, stratify=Ytrain)
 
                             #get the value of ck for the dissimilarity function classifier
                             ck=[np.sum(Ycal==i)/2 for i in range(len(np.unique(Ycal)))]
 
-                            # get the value of Fk for the dissimilarity function classifier as \frac{e^{\frac{1}{2}}}{(2\pi)^{d/2}|\Sigma_k|^{1/2}}
-                            Fk = [np.exp(0.5)/(np.power(2*np.pi, Xtrain.shape[1]/2)*np.sqrt(np.linalg.det(np.cov(Xtrain[Ytrain==i].T))) ) for i in range(len(np.unique(Ytrain)))]
                             # create the dissimilarity function classifier
-                            clf=isl.DisFunClassF(Xtrain.T, Ytrain, Xcal=Xcal.T, ycal=Ycal,ck=ck,Fk=None, gam=kr_gamma, ck_init=ck, Fk_init=Fk)
+                            clf=isl.DisFunClassF(Xtrain.T, Ytrain, ck=ck,Fk=None, gam=kr_gamma)
+
                             #apply the classifier to the training and test data to obtain the probabilities. these loops can be parallelized
                             with mp.Pool(mp.cpu_count()) as pool:
                                 Ytrain_pred = list(tqdm.tqdm(pool.imap(classify_probs, [(x, clf) for x in Xtrain]), total=len(Xtrain)))
@@ -295,7 +294,7 @@ if __name__ == '__main__':
                     filename="Plots\\borders\\"+fileprefix+clasif
                     # If the classifier isn't qda, add the lambda value to the name; put two decimal places and remove the decimal point
                     if clasif!="qda":
-                        filename+="Lambda"+"{:.2f}".format(kr_gamma).replace(".","")
+                        filename+="gamma"+"{:.2f}".format(kr_gamma).replace(".","")
 
                     # If the classifier is a calibrated dissimilarity function, add the calibration split to the name
                     if clasif=="dissimilarityWckCal" or clasif=="dissimilarityWckCalHC":

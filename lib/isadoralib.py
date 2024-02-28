@@ -817,8 +817,14 @@ class DisFunClassF:
         # Separate the training data by classes
         self.Dk = [self.Xtrain[:, np.where(self.ytrain == i)[0]].T.tolist() for i in range(np.unique(self.ytrain).shape[0])]
 
+        # count the number of elements in each class
+        self.Nk=[len(self.Dk[i]) for i in range(len(self.Dk))]
+
+        # count the dimension of the feature vector
+        self.d = self.Xtrain.shape[1]
+
         # Separate the calibrating data by classes
-        self.Dkcal = [self.Xcal[:, np.where(self.ycal == i)[0]].T.tolist() for i in range(np.unique(self.ycal).shape[0])]
+        #self.Dkcal = [self.Xcal[:, np.where(self.ycal == i)[0]].T.tolist() for i in range(np.unique(self.ycal).shape[0])]
 
         if (self.Fk is None):
             self.Fk=self.calibrateF()
@@ -910,14 +916,15 @@ class DisFunClassF:
         muk=[np.mean(self.Dk[i],axis=0) for i in range(len(self.Dk))]
 
         # get upsilonk as the covariance matrix for each class in Dk using bk instead of ck; \Upsilon_{\gamma_k,c_k}= \frac{N_k}{2b_k} \left(\frac{1}{N_k}X_kX_k^\top- \mu_k\mu_k^\top\right)
-        upsilonk=[self.Nk[i]/(2*bk[i])*(np.dot(self.Dk[i],self.Dk[i].T)/self.Nk[i]-np.dot(muk[i],muk[i].T)) for i in range(len(self.Dk))]
+        upsilonk=[self.Nk[i]/(2*bk[i])*(np.dot(np.array(self.Dk[i]).T,np.array(self.Dk[i]))/self.Nk[i]-np.dot(np.array(muk[i]),np.array(muk[i]).T)) for i in range(len(self.Dk))]
 
         # create a list Fk to store the values of F
         Fk=[]
         # for each class
         for i in range(len(self.Dk)):
             #for each point in the class, calculate the values of a gaussian distribution for each point in the class using upsilonk and muk
-            q=[1/(2*np.pi**(self.N/2)*np.sqrt(np.linalg.det(upsilonk[i])))*np.exp(-1/2*np.dot(np.dot((self.Dk[i][j]-muk[i]).T,np.linalg.inv(upsilonk[i])),(self.Dk[i][j]-muk[i]))) for j in range(len(self.Dk))]
+            print(np.linalg.inv(upsilonk[i]))
+            q=[1/(2*np.pi**(self.d/2)*np.sqrt(np.linalg.det(upsilonk[i])))*np.exp(-1/2*np.dot(np.dot((self.Dk[i][j]-muk[i]).T,np.linalg.inv(upsilonk[i])),(self.Dk[i][j]-muk[i]))) for j in range(len(self.Dk))]
 
             # use importance sampling to calculate the inverse of the value of each Fk as 1/F=1/N*sum(e^(-ck*Jk)/q)
             invF=1/self.Nk[i]*np.sum([np.exp(-self.ck[i]*Jgamma[j])/q[j] for j in range(len(self.Dk))])
@@ -962,34 +969,34 @@ class DisFunClassF:
         return y_pred
     
 
-    def getErrorF(self, initvals, Jkx):
+    # def getErrorF(self, initvals, Jkx):
 
-        # The first half of the initvals array is the value of c
-        ck=initvals[:len(initvals)//2]
-        # The second half of the initvals array is the value of F
-        f=initvals[len(initvals)//2:]
+    #     # The first half of the initvals array is the value of c
+    #     ck=initvals[:len(initvals)//2]
+    #     # The second half of the initvals array is the value of F
+    #     f=initvals[len(initvals)//2:]
 
-        #get the number of elements in each calibration set
-        Nkcal=[len(self.Dkcal[i]) for i in range(len(self.Dkcal))]
+    #     #get the number of elements in each calibration set
+    #     Nkcal=[len(self.Dkcal[i]) for i in range(len(self.Dkcal))]
 
-        #get the accumulated number of elements in each calibration set
-        Nkcalcum=np.cumsum(Nkcal)
-        # add a 0 at the beginning of the array
-        Nkcalcum=np.insert(Nkcalcum,0,0)
+    #     #get the accumulated number of elements in each calibration set
+    #     Nkcalcum=np.cumsum(Nkcal)
+    #     # add a 0 at the beginning of the array
+    #     Nkcalcum=np.insert(Nkcalcum,0,0)
         
 
-        pxk=[]
-        # for each element in the calibration set
-        for i in range(len(self.Xcal.T)):
-            # for each class
-            pk=[]
-            for k in range(len(self.Dkcal)):
-                # calculate the log probability of each class for each calibration sample
-                p=self.pk[k]+f[k]-ck[k]*Jkx[k][i]
-                # store the log probability
-                pk.append(p)
-            # store the log probabilities
-            pxk.append(pk)
+    #     pxk=[]
+    #     # for each element in the calibration set
+    #     for i in range(len(self.Xcal.T)):
+    #         # for each class
+    #         pk=[]
+    #         for k in range(len(self.Dkcal)):
+    #             # calculate the log probability of each class for each calibration sample
+    #             p=self.pk[k]+f[k]-ck[k]*Jkx[k][i]
+    #             # store the log probability
+    #             pk.append(p)
+    #         # store the log probabilities
+    #         pxk.append(pk)
         
         # obtain the class with the highest log probability for each calibration sample
         y_pred = [np.argmax(pxk[i]) for i in range(len(self.Xcal.T))]
