@@ -820,8 +820,8 @@ class DisFunClassF:
         # Separate the calibrating data by classes
         self.Dkcal = [self.Xcal[:, np.where(self.ycal == i)[0]].T.tolist() for i in range(np.unique(self.ycal).shape[0])]
 
-        if (self.ck is None or self.Fk is None):
-            self.calibrateCF()
+        if (self.Fk is None):
+            self.Fk=self.calibrateF()
     
     def calculateClassProb(self):
         '''Calculates the class probabilities from the training data.'''
@@ -831,17 +831,18 @@ class DisFunClassF:
         ClassProb=[np.sum(self.ytrain == i)/self.ytrain.shape[0] for i in range(nclases)]
         return ClassProb
     
-    def getJ(self,Dk,x):
+    def getJ(self,Dk,x,gam):
         '''Updates the matrices P, q, G, h and A for the training data Dk and the parameter gamma.'''
         # Get P matrix as a square matrix of size 2*N with a diagonal matrix of size N and value 2 in the upper left corner
         P = np.zeros([2*len(Dk), 2*len(Dk)])
         P[:len(Dk), :len(Dk)] = np.eye(len(Dk))*2
+
         # Matrix P as a sparse matrix
         P = sp.csc_matrix(P)
 
         # Get q vector of size 2*N+1 with gamma values in the last N elements
         q = np.zeros([2*len(Dk)])
-        q[len(Dk):2*len(Dk)] = self.gam
+        q[len(Dk):2*len(Dk)] = gam
 
         # Get G matrix of size 2*N x 2*N with four identity matrices of size N. All identity matrices have negative sign except the upper left corner
         G = np.zeros([2*len(Dk), 2*len(Dk)])
@@ -849,6 +850,7 @@ class DisFunClassF:
         G[len(Dk):2*len(Dk), len(Dk):2*len(Dk)] = -np.eye(len(Dk))
         G[len(Dk):2*len(Dk), :len(Dk)] = -np.eye(len(Dk))
         G[:len(Dk), len(Dk):2*len(Dk)] = -np.eye(len(Dk))
+
         # G as a sparse matrix
         G = sp.csc_matrix(G)
 
@@ -859,6 +861,7 @@ class DisFunClassF:
         A = np.zeros([len(Dk[0])+1, 2*len(Dk)])
         A[:len(Dk[0]), :len(Dk)] = np.array(Dk).T
         A[len(Dk[0]), :len(Dk)] = 1
+
         # A as a sparse matrix
         A = sp.csc_matrix(A)
         
@@ -877,34 +880,51 @@ class DisFunClassF:
             jx = 0.5*np.dot(T, np.dot(P.toarray(), T.T)) + np.dot(q.T, T)
         return jx
     
-    def calibrateCF(self):
-        '''Calibrates the values of c and F.'''
-        # For each class, calculate the value of the objective function for each calibration sample over the training set; samples are stored as the columns of the matrix
-        Jkx=[[self.getJ(self.Dk[i],self.Xcal[:,j]) for j in range(self.Xcal.shape[1])] for i in range(len(self.Dk))]
-        
-        # Calculate the log of Fk_init
-        fk_init=[np.log(self.Fk_init[i]) for i in range(len(self.Fk_init))]
+    def calibrateF(self):
+        '''Obtains the values of F.'''
+        #Create a list of J0 values
+        J0=[]
+        #Create a list of Jgamma values
+        Jgamma=[]
 
-        # Create the initvalues for the optimization function. initial values are self.ckinit for c and self.Fkinit for F
-        initvalues=np.hstack([self.ck_init,fk_init])
-              
-        # Solve the optimization problem using a Nelder-Mead algorithm
-        res=minimize(self.getErrorF,initvalues,args=Jkx,method='BFGS')
+        # For each class in the training data
+        for i in range(len(self.Dk)):
+            # For each point in the training set
+            for j in range(len(self.Dk[i])):
+                # Obtaing a subset that does not include the point
+                Dksub=[self.Dk[i][k] for k in range(len(self.Dk[i])) if k!=j]
 
-        # retrieve the optimized values for c
-        self.ck=res.x[:len(res.x)//2]
-        # retrieve the optimized values for Fk
-        logFk=res.x[len(res.x)//2:]
+                # Calculate the value of the objective function for the subset when gamma is 0
+                j0 = self.getJ(Dksub,self.Dk[i][j],0)
 
-        # Calculate the values of F
-        self.Fk=[np.exp(logFk[i]) for i in range(np.unique(self.ycal).shape[0])]
+                # Calculate the value of the objective function for the subset when gamma is self.gam
+                jgamma = self.getJ(Dksub,self.Dk[i][j],self.gam)
 
+                # Store the value of the objective function
+                J0.append(j0)
+                Jgamma.append(jgamma)
+        # get bk such as sum(ckJk)/N=sum(bkJ0)/N; ck*sum(Jk)=bk*sum(J0); bk=ck*sum(Jk)/sum(J0)
+        bk=[self.ck[i]*np.sum(Jgamma)/np.sum(J0) for i in range(len(self.Dk))]
 
-        # If the error is the same as the initial error, use the initial values
-        if self.getErrorF(res.x,Jkx)==self.getErrorF(initvalues,Jkx):
-            self.ck=self.ck_init
-            self.Fk=self.Fk_init
+        # get muk as the means for each characteristic along Dk
+        muk=[np.mean(self.Dk[i],axis=0) for i in range(len(self.Dk))]
 
+        # get upsilonk as the covariance matrix for each class in Dk using bk instead of ck; \Upsilon_{\gamma_k,c_k}= \frac{N_k}{2b_k} \left(\frac{1}{N_k}X_kX_k^\top- \mu_k\mu_k^\top\right)
+        upsilonk=[self.Nk[i]/(2*bk[i])*(np.dot(self.Dk[i],self.Dk[i].T)/self.Nk[i]-np.dot(muk[i],muk[i].T)) for i in range(len(self.Dk))]
+
+        # create a list Fk to store the values of F
+        Fk=[]
+        # for each class
+        for i in range(len(self.Dk)):
+            #for each point in the class, calculate the values of a gaussian distribution for each point in the class using upsilonk and muk
+            q=[1/(2*np.pi**(self.N/2)*np.sqrt(np.linalg.det(upsilonk[i])))*np.exp(-1/2*np.dot(np.dot((self.Dk[i][j]-muk[i]).T,np.linalg.inv(upsilonk[i])),(self.Dk[i][j]-muk[i]))) for j in range(len(self.Dk))]
+
+            # use importance sampling to calculate the inverse of the value of each Fk as 1/F=1/N*sum(e^(-ck*Jk)/q)
+            invF=1/self.Nk[i]*np.sum([np.exp(-self.ck[i]*Jgamma[j])/q[j] for j in range(len(self.Dk))])
+
+            # store the value of Fk
+            Fk.append(1/invF)
+        self.Fk=Fk
 
     def classifyProbs(self, x):
         '''Applies the classifier to a feature vector x. Returns the probability of each class.
@@ -916,7 +936,7 @@ class DisFunClassF:
             list: The probability of each class.
         '''
         # Calculate the value of the objective function for each class
-        jx = [self.getJ(self.Dk[i], x) for i in range(len(self.Dk))]
+        jx = [self.getJ(self.Dk[i], x, self.gam) for i in range(len(self.Dk))]
         # Calculate the probability of each class
         Prob = [self.Fk[i] * np.exp(-self.ck[i] * jx[i]) * self.ClassProb[i] for i in range(len(self.Dk))]
         # Normalize the probabilities
