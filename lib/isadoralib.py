@@ -5,6 +5,8 @@ import scipy.sparse as sp
 import qpsolvers as qp
 from scipy.optimize import minimize
 from scipy.optimize import linprog
+from sklearn.model_selection import train_test_split
+
 
 def cargaDatos(year,sufix):
     '''Load data corresponding to a year stored in the files [year][sufix].csv and validacion[year].csv and returns a tuple (tdv,ltp,meteo,hidric stress level).'''
@@ -761,7 +763,7 @@ class DisFunClass:
 
 class DisFunClassF:
     '''Our proposed dissimilarity function classifier with optimized F and c.'''
-    def __init__(self, Xtrain, ytrain, Xcal=None, ycal=None, gam=0, ck=None, Fk=None, ClassProb=None, ck_init=None, Fk_init=None):
+    def __init__(self, Xtrain, ytrain, Xcal=None, ycal=None, gam=0, ck=None, Fk=None, ClassProb=None, cal_fr=1):
         """
         Initialize the IsadoraLib class.
 
@@ -772,6 +774,7 @@ class DisFunClassF:
         - ck: None or float, ck value.
         - Fk: None or float, Fk value.
         - ClassProb: None or numpy array, class probabilities.
+        - cal_fr: float, fraction of the data used to compute F and c.
 
         Returns:
         None
@@ -783,15 +786,13 @@ class DisFunClassF:
         else:
             self.ytrain = ytrain
 
-        # Store calibrating data
-        if Xcal is None:
+        if cal_fr == 1:
             self.Xcal = Xtrain
-        else:
-            self.Xcal = Xcal
-        if ycal is None:
             self.ycal = ytrain
         else:
-            self.ycal = ycal
+            # Store calibrating data as a subset of the training data
+            self.Xcal, _, self.ycal, _ = train_test_split(self.Xtrain.T, self.ytrain, test_size=cal_fr)
+            self.Xcal = self.Xcal.T
 
         # Store ck value
         self.ck = ck
@@ -800,10 +801,12 @@ class DisFunClassF:
         # Store gamma value
         self.gam = gam
 
-        # Store initial ck value
-        self.ck_init = ck_init
-        # Store initial Fk value
-        self.Fk_init = Fk_init
+        # if self.ck is None, give it a starting value
+        if self.ck is None:
+            ck=[np.sum(self.ytrain==i)/2 for i in range(len(np.unique(self.ytrain)))]
+
+        # Store the fraction of the data used to compute F and c
+        self.cal_fr = cal_fr
 
         # Calculate the class probabilities if not provided
         if ClassProb is None:
@@ -817,17 +820,20 @@ class DisFunClassF:
         # Separate the training data by classes
         self.Dk = [self.Xtrain[:, np.where(self.ytrain == i)[0]].T.tolist() for i in range(np.unique(self.ytrain).shape[0])]
 
+        # Separate the calibrating data by classes
+        self.Dkcal = [self.Xcal[:, np.where(self.ycal == i)[0]].T.tolist() for i in range(np.unique(self.ycal).shape[0])]
+
         # count the number of elements in each class
         self.Nk=[len(self.Dk[i]) for i in range(len(self.Dk))]
 
         # count the dimension of the feature vector
-        self.d = self.Xtrain.shape[1]
+        self.d = self.Xtrain.shape[0]
 
         # Separate the calibrating data by classes
-        #self.Dkcal = [self.Xcal[:, np.where(self.ycal == i)[0]].T.tolist() for i in range(np.unique(self.ycal).shape[0])]
+        #self.self.Dkcal = [self.Xcal[:, np.where(self.ycal == i)[0]].T.tolist() for i in range(np.unique(self.ycal).shape[0])]
 
         if (self.Fk is None):
-            self.Fk=self.calibrateF()
+            self.Fk, self.ck=self.calibrateF()
     
     def calculateClassProb(self):
         '''Calculates the class probabilities from the training data.'''
@@ -875,7 +881,7 @@ class DisFunClassF:
         b = np.hstack([x, 1])
 
         # Get T that minimizes the QP function using OSQP
-        T = qp.solve_qp(P, q.T, G, h, A, b, solver='osqp')
+        T = qp.solve_qp(P, q.T, G, h, A, b, solver='clarabel')
 
         #check if T is None
         if T is None:
@@ -894,17 +900,17 @@ class DisFunClassF:
         Jgamma=[]
 
         # For each class in the training data
-        for i in range(len(self.Dk)):
+        for i in range(len(self.Dkcal)):
             # For each point in the training set
-            for j in range(len(self.Dk[i])):
-                # Obtaing a subset that does not include the point
-                Dksub=[self.Dk[i][k] for k in range(len(self.Dk[i])) if k!=j]
+            for j in range(len(self.Dkcal[i])):
+                # Obtain a subset that does not include the point
+                Dksub=[self.Dkcal[i][k] for k in range(len(self.Dkcal[i])) if k!=j]
 
                 # Calculate the value of the objective function for the subset when gamma is 0
-                j0 = self.getJ(Dksub,self.Dk[i][j],0)
+                j0 = self.getJ(Dksub,self.Dkcal[i][j],0)
 
                 # Calculate the value of the objective function for the subset when gamma is self.gam
-                jgamma = self.getJ(Dksub,self.Dk[i][j],self.gam)
+                jgamma = self.getJ(Dksub,self.Dkcal[i][j],self.gam)
 
                 # Store the value of the objective function
                 J0.append(j0)
@@ -921,17 +927,17 @@ class DisFunClassF:
         # create a list Fk to store the values of F
         Fk=[]
         # for each class
-        for i in range(len(self.Dk)):
+        for i in range(len(self.Dkcal)):
+
             #for each point in the class, calculate the values of a gaussian distribution for each point in the class using upsilonk and muk
-            print(np.linalg.inv(upsilonk[i]))
-            q=[1/(2*np.pi**(self.d/2)*np.sqrt(np.linalg.det(upsilonk[i])))*np.exp(-1/2*np.dot(np.dot((self.Dk[i][j]-muk[i]).T,np.linalg.inv(upsilonk[i])),(self.Dk[i][j]-muk[i]))) for j in range(len(self.Dk))]
+            q=[1/(2*np.pi**(self.d/2)*np.sqrt(np.linalg.det(upsilonk[i])))*np.exp(-1/2*np.dot(np.dot((self.Dkcal[i][j]-muk[i]).T,np.linalg.inv(upsilonk[i])),(self.Dkcal[i][j]-muk[i]))) for j in range(len(self.Dkcal[i]))]
 
             # use importance sampling to calculate the inverse of the value of each Fk as 1/F=1/N*sum(e^(-ck*Jk)/q)
-            invF=1/self.Nk[i]*np.sum([np.exp(-self.ck[i]*Jgamma[j])/q[j] for j in range(len(self.Dk))])
+            invF=1/(self.Nk[i])*np.sum([np.exp(-self.ck[i]*Jgamma[j])/q[j] for j in range(len(self.Dkcal[i]))])
 
             # store the value of Fk
             Fk.append(1/invF)
-        self.Fk=Fk
+        return Fk,bk
 
     def classifyProbs(self, x):
         '''Applies the classifier to a feature vector x. Returns the probability of each class.
@@ -977,7 +983,7 @@ class DisFunClassF:
     #     f=initvals[len(initvals)//2:]
 
     #     #get the number of elements in each calibration set
-    #     Nkcal=[len(self.Dkcal[i]) for i in range(len(self.Dkcal))]
+    #     Nkcal=[len(self.self.Dkcal[i]) for i in range(len(self.self.Dkcal))]
 
     #     #get the accumulated number of elements in each calibration set
     #     Nkcalcum=np.cumsum(Nkcal)
@@ -990,7 +996,7 @@ class DisFunClassF:
     #     for i in range(len(self.Xcal.T)):
     #         # for each class
     #         pk=[]
-    #         for k in range(len(self.Dkcal)):
+    #         for k in range(len(self.self.Dkcal)):
     #             # calculate the log probability of each class for each calibration sample
     #             p=self.pk[k]+f[k]-ck[k]*Jkx[k][i]
     #             # store the log probability

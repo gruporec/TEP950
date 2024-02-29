@@ -40,6 +40,12 @@ if __name__ == '__main__':
     plotlims=(-2,2,-2,2)
     #plotlims=None
 
+    #fraction of the data to use
+    fr=0.55
+
+    # fraction of the data to use for the calibration
+    cal_fr=1
+
     # grid step
     gridstep=0.005
 
@@ -54,7 +60,7 @@ if __name__ == '__main__':
     clasifs=["dissimilarityF"]
 
     # gamma for kriging 
-    kr_gammas=[0,1]
+    kr_gammas=[0.2]
 
     fileprefix=""
 
@@ -74,10 +80,12 @@ if __name__ == '__main__':
         Xtrain=db[["a","b"]].to_numpy()
         Ytrain=db["Y"].to_numpy()
 
-        
+        # get only a fraction of the data
+        if fr<1:
+            _,Xtrain,_,Ytrain=train_test_split(Xtrain,Ytrain,test_size=fr,random_state=42,stratify=Ytrain)
 
         # separate the training data into training and calibration data
-        Xtrain, Xcal, Ytrain, Ycal = train_test_split(Xtrain, Ytrain, test_size=train_split, random_state=42, stratify=Ytrain)
+        Xtr, Xcal, Ytr, Ycal = train_test_split(Xtrain, Ytrain, test_size=train_split, random_state=42, stratify=Ytrain)
         
         #if the limits of the plot are not fixed, calculate them
         if plotlims==None:
@@ -195,12 +203,12 @@ if __name__ == '__main__':
                             ck=[np.sum(Ycal==i)/2 for i in range(len(np.unique(Ycal)))]
 
                             # get the value of Fk for the dissimilarity function classifier as \frac{e^{\frac{1}{2}}}{(2\pi)^{d/2}|\Sigma_k|^{1/2}}
-                            Fk = [np.exp(0.5)/(np.power(2*np.pi, Xtrain.shape[1]/2)*np.sqrt(np.linalg.det(np.cov(Xtrain[Ytrain==i].T))) ) for i in range(len(np.unique(Ytrain)))]
+                            Fk = [np.exp(0.5)/(np.power(2*np.pi, Xtr.shape[1]/2)*np.sqrt(np.linalg.det(np.cov(Xtr[Ytrain==i].T))) ) for i in range(len(np.unique(Ytrain)))]
                             # create the dissimilarity function classifier
-                            clf=isl.DisFunClass(Xtrain.T, Ytrain, Xcal=Xcal.T, ycal=Ycal,ck=ck,Fk=None, gam=kr_gamma, ck_init=ck, Fk_init=Fk)
+                            clf=isl.DisFunClass(Xtr.T, Ytr, Xcal=Xcal.T, ycal=Ycal,ck=ck,Fk=None, gam=kr_gamma, ck_init=ck, Fk_init=Fk)
                             #apply the classifier to the training and test data to obtain the probabilities. these loops can be parallelized
                             with mp.Pool(mp.cpu_count()) as pool:
-                                Ytrain_pred = list(tqdm.tqdm(pool.imap(classify_probs, [(x, clf) for x in Xtrain]), total=len(Xtrain)))
+                                Ytrain_pred = list(tqdm.tqdm(pool.imap(classify_probs, [(x, clf) for x in Xtr]), total=len(Xtr)))
                             with mp.Pool(mp.cpu_count()) as pool:
                                 Ytest_pred = list(tqdm.tqdm(pool.imap(classify_probs, [(x, clf) for x in Xtest]), total=len(Xtest)))
 
@@ -209,19 +217,17 @@ if __name__ == '__main__':
                             Ytest_pred = np.array(Ytest_pred)
                         case "dissimilarity":
                             
-                            # separate the training data into training and calibration data
-                            Xt, Xcal, Yt, Ycal = train_test_split(Xtrain, Ytrain, test_size=train_split, random_state=42, stratify=Ytrain)
 
                             #get the value of ck for the dissimilarity function classifier
                             ck=[np.sum(Ycal==i)/2 for i in range(len(np.unique(Ycal)))]
 
                             # get the value of Fk for the dissimilarity function classifier as \frac{e^{\frac{1}{2}}}{(2\pi)^{d/2}|\Sigma_k|^{1/2}}
-                            Fk = [np.exp(0.5)/(np.power(2*np.pi, Xt.shape[1]/2)*np.sqrt(np.linalg.det(np.cov(Xt[Yt==i].T))) ) for i in range(len(np.unique(Yt)))]
+                            Fk = [np.exp(0.5)/(np.power(2*np.pi, Xtr.shape[1]/2)*np.sqrt(np.linalg.det(np.cov(Xtr[Ytrain==i].T))) ) for i in range(len(np.unique(Ytrain)))]
                             # create the dissimilarity function classifier
-                            clf=isl.DisFunClass(Xt.T, Yt, Xcal=Xcal.T, ycal=Ycal,ck=ck,Fk=Fk, gam=kr_gamma, ck_init=ck, Fk_init=Fk)
+                            clf=isl.DisFunClass(Xtr.T, Ytr, Xcal=Xcal.T, ycal=Ycal,ck=ck,Fk=Fk, gam=kr_gamma, ck_init=ck, Fk_init=Fk)
                             #apply the classifier to the training and test data to obtain the probabilities. these loops can be parallelized
                             with mp.Pool(mp.cpu_count()) as pool:
-                                Ytrain_pred = list(tqdm.tqdm(pool.imap(classify_probs, [(x, clf) for x in Xt]), total=len(Xtrain)))
+                                Ytrain_pred = list(tqdm.tqdm(pool.imap(classify_probs, [(x, clf) for x in Xtr]), total=len(Xtr)))
                             with mp.Pool(mp.cpu_count()) as pool:
                                 Ytest_pred = list(tqdm.tqdm(pool.imap(classify_probs, [(x, clf) for x in Xtest]), total=len(Xtest)))
 
@@ -229,15 +235,13 @@ if __name__ == '__main__':
                             Ytrain_pred = np.array(Ytrain_pred)
                             Ytest_pred = np.array(Ytest_pred)
                         case "dissimilarityF":
-                            
-                            # separate the training data into training and calibration data
-                            #Xt, Xcal, Yt, Ycal = train_test_split(Xtrain, Ytrain, test_size=train_split, random_state=42, stratify=Ytrain)
+                
 
                             #get the value of ck for the dissimilarity function classifier
-                            ck=[np.sum(Ycal==i)/2 for i in range(len(np.unique(Ycal)))]
+                            ck=[np.sum(Ytrain==i)/2 for i in range(len(np.unique(Ytrain)))]
 
                             # create the dissimilarity function classifier
-                            clf=isl.DisFunClassF(Xtrain.T, Ytrain, ck=ck,Fk=None, gam=kr_gamma)
+                            clf=isl.DisFunClassF(Xtrain.T, Ytrain, ck=ck,Fk=None, gam=kr_gamma, cal_fr=cal_fr)
 
                             #apply the classifier to the training and test data to obtain the probabilities. these loops can be parallelized
                             with mp.Pool(mp.cpu_count()) as pool:
@@ -260,7 +264,6 @@ if __name__ == '__main__':
                     print("ck and Fk for",clasif)
                     print(clf.ck)
                     print(clf.Fk)
-        
 
                     # reshape the results to the grid shape
                     Ytest_pred=Ytest_pred.reshape([xx.shape[0],xx.shape[1],3])
@@ -301,12 +304,29 @@ if __name__ == '__main__':
                         filename+="Cal"+"{:.2f}".format(train_split).replace(".","")
                     # Add the database number to the name and create another filename for the plot without the scatter
                     scatterlessfilename=filename+"_"+str(file)+"_scatterless.png"
+                    colorfilename=filename+"_"+str(file)+"_color.png"
+                    scatteronlyfilename=filename+"_"+str(file)+"_scatteronly.png"
                     filename+="_"+str(file)+".png"
 
                     print("Saving plot to "+filename)
                     
                     # save the plot using the clasifier name and the database name as the name of the file
                     plt.savefig(filename)
+                    #close the plot
+                    plt.close()         
+
+                    # Plot the scatter of the training data
+                    plt.scatter(Xtrain[Ytrain==0,0],Xtrain[Ytrain==0,1],color="grey",marker="x",s=10)
+                    plt.scatter(Xtrain[Ytrain==1,0],Xtrain[Ytrain==1,1],color="grey",marker="o",s=10)
+                    # Save the plot with only the scatter
+                    plt.savefig(scatteronlyfilename)
+                    #close the plot
+                    plt.close()
+                    
+                    # plot the results using imshow
+                    plt.imshow(Ytest_pred,extent=[xmin,xmax,ymin,ymax],origin="lower", alpha=0.5)
+                    # Save the plot with colors
+                    plt.savefig(colorfilename)
                     #close the plot
                     plt.close()
 
@@ -318,8 +338,11 @@ if __name__ == '__main__':
                     #close the plot
                     plt.close()
 
+                    # extract the first column of the probabilities to save them to a file
+                    Ytest_pred=Ytest_pred[:,:,0]
+
                     # Save the probabilities to a file
-                    np.savetxt(filename.replace(".png",".csv"),Ytest_pred[:,:,0],delimiter=",")
+                    np.savetxt(filename.replace(".png",".csv"),Ytest_pred,delimiter=",")
 
                     # Save the probabilities to a file
                     np.savetxt(filename.replace(".png","_train.csv"),Ytrain_pred,delimiter=",")
