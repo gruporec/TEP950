@@ -803,7 +803,7 @@ class DisFunClassF:
 
         # if self.ck is None, give it a starting value
         if self.ck is None:
-            ck=[np.sum(self.ytrain==i)/2 for i in range(len(np.unique(self.ytrain)))]
+            self.ck=[np.sum(self.ytrain==i)/2 for i in range(len(np.unique(self.ytrain)))]
 
         # Store the fraction of the data used to compute F and c
         self.cal_fr = cal_fr
@@ -881,7 +881,7 @@ class DisFunClassF:
         b = np.hstack([x, 1])
 
         # Get T that minimizes the QP function using OSQP
-        T = qp.solve_qp(P, q.T, G, h, A, b, solver='clarabel')
+        T = qp.solve_qp(P, q.T, G, h, A, b, solver='osqp')
 
         #check if T is None
         if T is None:
@@ -922,7 +922,7 @@ class DisFunClassF:
         muk=[np.mean(self.Dk[i],axis=0) for i in range(len(self.Dk))]
 
         # get upsilonk as the covariance matrix for each class in Dk using bk instead of ck; \Upsilon_{\gamma_k,c_k}= \frac{N_k}{2b_k} \left(\frac{1}{N_k}X_kX_k^\top- \mu_k\mu_k^\top\right)
-        upsilonk=[self.Nk[i]/(2*bk[i])*(np.dot(np.array(self.Dk[i]).T,np.array(self.Dk[i]))/self.Nk[i]-np.dot(np.array(muk[i]),np.array(muk[i]).T)) for i in range(len(self.Dk))]
+        upsilonk=[self.Nk[i]/(2*bk[i])*(np.dot(np.array(self.Dk[i]).T,np.array(self.Dk[i]))/self.Nk[i]-np.outer(np.array(muk[i]),np.array(muk[i]))) for i in range(len(self.Dk))]
 
         # create a list Fk to store the values of F
         Fk=[]
@@ -937,6 +937,7 @@ class DisFunClassF:
 
             # store the value of Fk
             Fk.append(1/invF)
+
         return Fk,bk
 
     def classifyProbs(self, x):

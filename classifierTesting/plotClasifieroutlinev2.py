@@ -41,7 +41,7 @@ if __name__ == '__main__':
     #plotlims=None
 
     #fraction of the data to use
-    fr=0.55
+    fr=1
 
     # fraction of the data to use for the calibration
     cal_fr=1
@@ -56,7 +56,7 @@ if __name__ == '__main__':
     acc_margin=0.1
 
     # clasifier types to use. Available types: "qda", "dissimilarityWckCalHC", "dissimilarity", "dissimilarityF"
-    clasifs=["dissimilarityWckCalHC"]
+    clasifs=["qda"]
     clasifs=["dissimilarityF"]
 
     # gamma for kriging 
@@ -248,6 +248,10 @@ if __name__ == '__main__':
                                 Ytrain_pred = list(tqdm.tqdm(pool.imap(classify_probs, [(x, clf) for x in Xtrain]), total=len(Xtrain)))
                             with mp.Pool(mp.cpu_count()) as pool:
                                 Ytest_pred = list(tqdm.tqdm(pool.imap(classify_probs, [(x, clf) for x in Xtest]), total=len(Xtest)))
+
+                            # #previous loops are commented out because they cause problems with the parallelization. The following loops are not parallelized
+                            # Ytrain_pred = [clf.classifyProbs(x) for x in Xtrain]
+                            # Ytest_pred = [clf.classifyProbs(x) for x in Xtest]
 
                             #convert the list to a numpy array
                             Ytrain_pred = np.array(Ytrain_pred)

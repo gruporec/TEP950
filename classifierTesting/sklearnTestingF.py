@@ -44,13 +44,10 @@ if __name__ == '__main__':
     n_samples=None
 
     # Select the split ratio or the amount of samples for the training and testing data
-    test_size=0.5
-
-    # Split again the training data to obtain a calibration set
-    cal_size=0.5
+    test_size=0.75
 
     # Select the value of the gamma parameter for the dissimilarity function classifier
-    gam=19
+    gam=1
 
     # Default pca components to analize. 0 or None to not use pca
     pca_comp=None
@@ -59,8 +56,8 @@ if __name__ == '__main__':
     knownCK=None
     knownFK=None
     # If there is a file with the results, load the preprocessed FK and CK values and change the Alreadysaved flag to True
-    if os.path.exists("classifierTesting\\results\\FkckValuesTest"+"{:.2f}".format(test_size).replace(".","") + "Cal" + "{:.2f}".format(cal_size).replace(".","") + "gamma" + "{:.2f}".format(7).replace(".","") + ".csv"):
-        Fkckdf = pd.read_csv("classifierTesting\\results\\FkckValuesTest"+"{:.2f}".format(test_size).replace(".","") + "Cal" + "{:.2f}".format(cal_size).replace(".","") + "gamma" + "{:.2f}".format(7).replace(".","") + ".csv")
+    if os.path.exists("classifierTesting\\results\\FkckValuesTest"+"{:.2f}".format(test_size).replace(".","") + "gamma" + "{:.2f}".format(7).replace(".","") + ".csv"):
+        Fkckdf = pd.read_csv("classifierTesting\\results\\FkckValuesTest"+"{:.2f}".format(test_size).replace(".","") + "gamma" + "{:.2f}".format(7).replace(".","") + ".csv")
         Fkckdf.set_index("Dataset", inplace=True)
         Alreadysaved=True
 
@@ -155,9 +152,6 @@ if __name__ == '__main__':
         # Obtain a random training and testing split
         X_train, X_test, y_train, y_test = train_test_split(xdata, ydata, test_size=test_size, random_state=42, stratify=ydata)
 
-        # Obtain a random calibration split
-        X_t, X_cal, y_t, y_cal = train_test_split(X_train, y_train, test_size=cal_size, random_state=42, stratify=y_train)
-
         # create the qda classifier
         clfqda = sklda.QuadraticDiscriminantAnalysis()
         # fit the classifier to the training data  
@@ -196,7 +190,7 @@ if __name__ == '__main__':
         # get the value of Fk for the dissimilarity function classifier as \frac{e^{\frac{1}{2}}}{(2\pi)^{d/2}|\Sigma_k|^{1/2}}
         Fk = [np.exp(0.5)/(np.power(2*np.pi, X_train.shape[1]/2)*np.sqrt(np.linalg.det(np.cov(X_train[y_train==i].T))) ) for i in range(len(np.unique(y_train)))]
         # create the dissimilarity function classifier
-        clf=isl.DisFunClassF(X_train.T, y_train, ck=knownCK,Fk=knownFK, gam=gam)
+        clf=isl.DisFunClassF(X_train.T, y_train, ck=ck,Fk=None, gam=gam)
 
         # apply the classifier to the test data
         with mp.Pool(mp.cpu_count()) as pool:
@@ -235,6 +229,6 @@ if __name__ == '__main__':
 
     print(results)
     # Save the results to a csv file, including the test split ratio in the name
-    results.to_csv("classifierTesting\\results\\sklearnTestResults"+"{:.2f}".format(test_size).replace(".","") + "Cal" + "{:.2f}".format(cal_size).replace(".","") + "gamma" + "{:.2f}".format(gam).replace(".","") + ".csv")
+    results.to_csv("classifierTesting\\results\\sklearnTestResults"+"{:.2f}".format(test_size).replace(".","") + "gamma" + "{:.2f}".format(gam).replace(".","") + ".csv")
     # Save the Fk and ck values to a csv file, including the test split ratio in the name
-    Fkckdf.to_csv("classifierTesting\\results\\FkckValuesTest"+"{:.2f}".format(test_size).replace(".","") + "Cal" + "{:.2f}".format(cal_size).replace(".","") + "gamma" + "{:.2f}".format(gam).replace(".","") + ".csv")
+    Fkckdf.to_csv("classifierTesting\\results\\FkckValuesTest"+"{:.2f}".format(test_size).replace(".","") + "gamma" + "{:.2f}".format(gam).replace(".","") + ".csv")
