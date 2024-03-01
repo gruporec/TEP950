@@ -3,6 +3,7 @@ import matplotlib.pyplot as plt
 import scipy.sparse as sp
 import qpsolvers as qp
 import sys
+import time
 
 def gaussian(x:np.ndarray, mean:np.ndarray, cov:np.ndarray) -> float:
     '''
@@ -94,6 +95,9 @@ def dissimFunct(Dk,x,gam):
         jx = 0.5*np.dot(T, np.dot(P.toarray(), T.T)) + np.dot(q.T, T)
     return jx
 
+# start counting execution time
+start = time.time()
+
 #fix the seed
 np.random.seed(42)
 
@@ -108,8 +112,11 @@ nIS = 100
 # gamma parameter
 gam = 1
 
+#c fraction
+cf=32
+
 # c parameter
-c = n/8
+c = n/cf
 
 # grid resolution in points per axis
 res = 100
@@ -119,6 +126,9 @@ xlim = [-2, 2]
 ylim = [-2, 2]
 
 ############################################ PROCESSING ############################################
+
+# mark the time for processing start
+processtart = time.time()
 
 # create a random 2x2 matrix
 R= np.random.rand(2,2)
@@ -143,23 +153,35 @@ x = np.linspace(xlim[0], xlim[1], res)
 y = np.linspace(ylim[0], ylim[1], res)
 X, Y = np.meshgrid(x, y)
 
+# Mark the time for gaussian process
+gausstime = time.time()
+
 # Compute the value of the Gaussian function at each point of the grid
 Zgauss = np.zeros(X.shape)
 for i in range(X.shape[0]):
     for j in range(X.shape[1]):
         Zgauss[i, j] = gaussian(np.array([X[i, j], Y[i, j]]), mean, cov)
 
+# Mark the time for the QP problem
+qpgammastart = time.time()
+
 # Compute the value of the objective function at each point of the grid using dataT as the training data
 jgamma = np.zeros(X.shape)
 for i in range(X.shape[0]):
     for j in range(X.shape[1]):
         jgamma[i, j] = dissimFunct(dataT, np.array([X[i, j], Y[i, j]]), gam)
+    
+# mark the time for the qp0
+qp0start = time.time()
 
 # Compute the value of the objective function at each point of the grid using dataT as the training data and the gamma=0
 j0 = np.zeros(X.shape)
 for i in range(X.shape[0]):
     for j in range(X.shape[1]):
         j0[i, j] = dissimFunct(dataT, np.array([X[i, j], Y[i, j]]), 0)
+
+# mark the time for the qp0
+qp0end = time.time()
 
 # Calculate b as c*sum(jgamma)/sum(j0)
 b = c*np.sum(jgamma)/np.sum(j0)
@@ -170,16 +192,24 @@ upsilon = n/(2*b) * cov
 # Create a new dataset with a normal distribution with mean and covariance matrix
 dataIS = np.random.multivariate_normal(mean, upsilon, nIS)
 
+# Mark the time for the ISgamma
+ISgammastart = time.time()
+
 # Compute the value of the objective function at each point of dataIS using dataT as the training data
 jgammaIS = np.zeros(nIS)
 for i in range(nIS):
     jgammaIS[i] = dissimFunct(dataT, dataIS[i], gam)
+
+# Mark the time for the ISgauss
+ISgaussstart = time.time()
 
 # Compute the value of the gaussian function at each point of dataIS using mean and upsilon
 q = np.zeros(nIS)
 for i in range(nIS):
     q[i] = gaussian(dataIS[i], mean, upsilon)
 
+# Mark the time for the IS
+ISstart = time.time()
 
 # Calculate exp(-c*jgammaIS)/q for each point of dataIS
 exp = np.divide(np.exp(-c*jgammaIS),q)
@@ -193,6 +223,9 @@ F = 1/Finv
 # Calculate P as F*exp(-c*j) for each point of the grid
 P = F*np.exp(-c*jgamma)
 
+# Mark the time for the LR
+LRstart = time.time()
+
 # Calculate the dissimilarity function at each point of dataT using dataT as the training data
 jgammaData = np.zeros(n)
 for i in range(n):
@@ -203,14 +236,32 @@ Pdata = F*np.exp(-c*jgammaData)
 
 # Calculate the likelihood ratio as the multiplication of all the values of Pdata
 LR = np.prod(Pdata)
+# mark the time for the end
+end = time.time()
 
 # Print the value of the likelihood ratio
 print(LR)
+
+# Print all the times substracting start
+print("Var declaration time: ", processtart-start)
+print("Preprocess vars time: ", gausstime-processtart)
+print("Gauss time: ", qpgammastart-gausstime)
+print("QP gamma time: ", qp0start-qpgammastart)
+print("QP 0 time: ", qp0end-qp0start)
+print("b and upsilon calculation time: ", ISgammastart-qp0end)
+print("IS jgamma time: ", ISgaussstart-ISgammastart)
+print("IS gauss time: ", ISstart-ISgaussstart)
+print("IS time: ", LRstart-ISstart)
+print("LR time: ", end-LRstart)
+print("Total time: ", end-start)
 
 ############################################ PLOTTING ############################################
         
 # create a figure with 4 subplots
 fig, axs = plt.subplots(2, 2)
+
+# Add a title to the figure
+fig.suptitle('Likelihood ratio: ' + str(LR))
 
 # Plot P in the first subplot
 cax1=axs[0, 0].contourf(X, Y, P, 20, cmap='RdGy')
@@ -226,7 +277,7 @@ axs[0, 0].set_xlim(xlim)
 axs[0, 0].set_ylim(ylim)
 
 # Add a title to the first subplot
-axs[0, 0].set_title('Disimilarity function with LR = ' + str(LR))
+axs[0, 0].set_title('Disimilarity function')
         
 # Plot the Gaussian function in the second subplot
 cax2=axs[0, 1].contourf(X, Y, Zgauss, 20, cmap='RdGy')
@@ -258,5 +309,5 @@ axs[1, 1].axis('equal')
 
 # Add a title to the fourth subplot
 axs[1, 1].set_title('Transformed data')
-filename="Plots\\LRresults\\gamma" + "{:.2f}".format(gam).replace(".","") + "c" + "{:.2f}".format(c).replace(".","") + ".png"
+filename="Plots\\LRresults\\gamma" + "{:.2f}".format(gam).replace(".","") + "cf" + "{:.2f}".format(cf).replace(".","") + ".png"
 plt.savefig(filename)
