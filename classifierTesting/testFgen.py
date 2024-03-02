@@ -97,13 +97,64 @@ def dissimFunct(Dk,x,gam,gamma2):
         jx = 0.5*np.dot(T, np.dot(P.toarray(), T.T)) + np.dot(q.T, T)
     return jx
 
+def sampleReject(F,c,gam,gamma2,mean,cov,n):
+    '''
+    Computes a sample rejection algorithm to sample from the distribution of the dissimilarity function using a Gaussian distribution as a base distribution
+
+    Parameters
+    ----------
+    F : float
+        The value of the F constant
+    c : float
+        The value of the c constant
+    gam : float
+        The value of the gamma parameter. Equivalent gamma will be gam/gamma2
+    gamma2 : float
+        The value of the gamma2 parameter. Equivalent gamma will be gam/gamma2
+    mean : np array of shape (N,)
+        The mean of the Gaussian function
+    cov : np array of shape (N,N)
+        The covariance matrix of the Gaussian function
+    n : int
+        The number of points to sample
+
+    Returns
+    -------
+    np array of shape (n,N)
+        The sampled points
+    '''
+    # Create an empty list to store the points
+    points = []
+    
+    # While the list has less points than n
+    while len(points) < n:
+        # Generate a random point from the Gaussian distribution
+        point = np.random.multivariate_normal(mean, cov)
+        # Compute the value of the dissimilarity function at the point
+        jx = dissimFunct(dataT, point, gam, gamma2)
+        # Generate a random number between 0 and 1
+        r = np.random.rand()
+        
+        # get the probability of the point using the Gaussian distribution
+        q = gaussian(point, mean, cov)
+
+        # get the probability of the point using the dissimilarity function
+        p = F*np.exp(-c*jx)
+
+        # if the random number is less than the ratio of the probabilities
+        if r < p/q:
+            # add the point to the list
+            points.append(point)
+    # convert the list to a numpy array
+    return np.array(points)
+
 #fix the seed
 np.random.seed(42)
 
 ############################################ PARAMETER SETTING ############################################
 
 # number of points for the random dataset
-n = 200
+n = 100
 
 # number of points for Importance Sampling
 nIS = 10000
@@ -111,12 +162,15 @@ nIS = 10000
 # number of points for b calculation
 nB = 10000
 
+# number of points to generate using the sample rejection algorithm
+nSR = 200
+
 # gamma parameter. Equivalent gamma will be gam/gamma2. gamma2 is not really working too well when it comes to getting the value of F
-gam = 0.5
+gam = 1
 gamma2=1
 
 #c fraction
-cf=10
+cf=12
 
 # c parameter
 c = n/cf
@@ -127,13 +181,6 @@ res = 100
 # grid limits
 xlim = [-2, 2]
 ylim = [-2, 2]
-
-# create a deformation 2x2 matrix
-R= np.random.rand(2,2)
-
-R= np.array([[0.8734294, 0.4], [0.2, 0.8734294]])
-
-R=np.eye(2)
 
 # Name the shape for the filename
 shapeName = 'triangle'
@@ -177,35 +224,32 @@ if onlyShape:
 path = mpath.Path(corners)
 
 # create a list of points to use as dataset
-data = []
+dataT = []
 
 # get the rectangle that contains the shape
 x0, y0 = np.min(corners, axis=0)
 x1, y1 = np.max(corners, axis=0)
 
 # while the list has less points than n
-while len(data) < n:
+while len(dataT) < n:
     # generate a random point inside the rectangle
     point = np.random.rand(2) * [x1-x0, y1-y0] + [x0, y0]
     # check if the point is inside the shape
     if path.contains_point(point):
         # add the point to the list
-        data.append(point)
+        dataT.append(point)
+
+# convert the list to a numpy array
+dataT = np.array(dataT)
 
 if onlyPoints:
-    #plot the points
-    data = np.array(data)
-    plt.scatter(data[:, 0], data[:, 1])
+    #plot the pointsç
+    plt.scatter(dataT[:, 0], dataT[:, 1])
     # equal aspect ratio
     plt.axis('equal')
     plt.show()
     sys.exit()
 
-# convert the list to a numpy array
-data = np.array(data)
-
-# Apply the random 2D transform to the data
-dataT = np.dot(data, R)
 
 # get an approximation of the covariance matrix
 cov = np.cov(dataT, rowvar=False)
@@ -307,6 +351,9 @@ print('c: ', c)
 # Print the value of b
 print('b: ', b)
 
+# generate a sample of points using the sample rejection algorithm
+dataSR = sampleReject(F, c, gam, gamma2, mean, cov, nSR)
+
 ############################################ PLOTTING ############################################
         
 # create a figure with 4 subplots
@@ -348,20 +395,21 @@ axs[0, 1].set_ylim(ylim)
 axs[0, 1].set_title('Gaussian function')
 
 # Scatter plot of the original data in the third subplot
-axs[1, 0].scatter(data[:, 0], data[:, 1])
+axs[1, 0].scatter(dataT[:, 0], dataT[:, 1])
 axs[1, 0].axis('equal')
 
 # Add a title to the third subplot
 axs[1, 0].set_title('Original data')
 
 
-# Scatter plot of the transformed data in the fourth subplot
-axs[1, 1].scatter(dataT[:, 0], dataT[:, 1])
+# Scatter plot of the inferred data in the fourth subplot
+axs[1, 1].scatter(dataT[:, 0], dataT[:, 1], c='black', s=10, marker='x')
+axs[1, 1].scatter(dataSR[:, 0], dataSR[:, 1], c='red', s=10, marker='x')
 axs[1, 1].axis('equal')
 
 # Add a title to the fourth subplot
-axs[1, 1].set_title('Transformed data')
-filename="Plots\\LRresults\\"+shapeName+"gamma" + "{:.2f}".format(gam/gamma2).replace(".","") + "cf" + "{:.2f}".format(cf).replace(".","") + ".png"
+axs[1, 1].set_title('Inferred data')
+filename="Plots\\SRresults\\"+shapeName+"gamma" + "{:.2f}".format(gam/gamma2).replace(".","") + "cf" + "{:.2f}".format(cf).replace(".","") + ".png"
 
 # Save the figure
 plt.savefig(filename)
