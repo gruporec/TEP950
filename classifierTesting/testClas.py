@@ -148,6 +148,229 @@ def sampleReject(F,c,gam,gamma2,mean,cov,n):
     # convert the list to a numpy array
     return np.array(points)
 
+class dissimDistribution:
+    '''Implements a class to manage a dissimilarity-function-based distribution'''
+    def __init__(self, dataT, gam, gamma2, c, F=None, nIS=None, nB=None):
+        '''
+        Initializes the dissimilarity-function-based distribution
+
+        Parameters
+        ----------
+        dataT : np array of shape (M,N)
+            The training data matrix
+        gam : float
+            The value of the gamma parameter. Equivalent gamma will be gam/gamma2
+        gamma2 : float
+            The value of the gamma2 parameter. Equivalent gamma will be gam/gamma2
+        c : float
+            The value of the c constant
+        F : float
+            The value of the F constant. If None, it will be calculated
+        '''
+
+        # store the training data
+        self.dataT = dataT
+        # store the gamma parameter
+        self.gam = gam
+        # store the gamma2 parameter
+        self.gamma2 = gamma2
+        # store the c constant
+        self.c = c
+
+        # get the dimension of the data
+        self.d = len(dataT[0])
+        self.N = len(dataT)
+
+        # if nIS is None
+        if nIS is None:
+            # calculate nIS
+            self.nIS = 100**self.d
+        else:
+            # store nIS
+            self.nIS = nIS
+        
+        # if nB is None
+        if nB is None:
+            # calculate nB
+            self.nB = 100**self.d
+        else:
+            # store nB
+            self.nB = nB
+
+        # get an approximation of the covariance matrix
+        self.cov = np.cov(dataT, rowvar=False)
+
+        #get an approximation of the mean
+        self.mean = np.mean(dataT, axis=0)
+        
+        # if F is None
+        if F is None:
+            # calculate F
+            self.F = self.calculateF()
+        else:
+            # store F
+            self.F = F
+
+
+    def calculateF(self):
+        '''
+        Calculates the value of the F constant
+
+        Returns
+        -------
+        float
+            The value of the F constant
+        '''
+        # generate random points using the normal distribution to calculate b
+        datab = np.random.multivariate_normal(self.mean, self.cov, self.nB)
+
+        # Compute the value of the objective function at each point of the selected points using dataT as the training data
+        jgammab = np.zeros(self.nB)
+        for i in range(self.nB):
+            jgammab[i] = dissimFunct(self.dataT, datab[i], self.gam, self.gamma2)
+
+        # Compute the value of the objective function at each point of the selected points using dataT as the training data
+        j0b = np.zeros(self.nB)
+        for i in range(self.nB):
+            j0b[i] = dissimFunct(self.dataT, datab[i], 0, 1)
+
+        # Calculate b as c*sum(jgamma)/sum(j0)
+        self.b = self.c*np.sum(jgammab)/np.sum(j0b)
+
+        # Calculate upsilon as the equivalent covariance for the gaussian closest to the Jgamma-based probability distribution
+        upsilon = self.N/(2*self.b) * self.cov
+
+        # Create a new dataset with a normal distribution with mean and covariance matrix
+        dataIS = np.random.multivariate_normal(self.mean, upsilon, self.nIS)
+
+        # Compute the value of the objective function at each point of dataIS using dataT as the training data
+        jgammaIS = np.zeros(self.nIS)
+        for i in range(self.nIS):
+            jgammaIS[i] = dissimFunct(self.dataT, dataIS[i], self.gam, self.gamma2)
+
+        # Compute the value of the gaussian function at each point of dataIS using mean and upsilon
+        q = np.zeros(self.nIS)
+        for i in range(self.nIS):
+            q[i] = gaussian(dataIS[i], self.mean, upsilon)
+
+        # Calculate exp(-c*jgammaIS)/q for each point of dataIS
+        exp = np.divide(np.exp(-self.c*jgammaIS),q)
+
+        # Calculate the inverse of F as 1/nIS * sum(exp(-c*jgammaIS)/q)
+        Finv = 1/self.nIS * np.sum(exp)
+
+        # Calculate the value of F as 1/Finv
+        F = 1/Finv
+
+        return F
+    
+    def computeP(self, p):
+        '''
+        Computes the value of the dissimilarity function-based distribution at a point
+
+        Parameters
+        ----------
+        p : np array of shape (N,)
+            The point at which to compute the value of the distribution
+
+        Returns
+        -------
+        float
+            The value of the dissimilarity function-based distribution at the point
+        '''
+
+        # Compute the value of the dissimilarity function at the point
+        jx = dissimFunct(self.dataT, p, self.gam, self.gamma2)
+
+        # Compute the value of the distribution at the point
+        return self.F*np.exp(-self.c*jx)
+    
+    def computePlist(self, points):
+        '''
+        Computes the value of the dissimilarity function-based distribution at a list of points
+
+        Parameters
+        ----------
+        points : np array of shape (n,N)
+            The points at which to compute the value of the distribution
+
+        Returns
+        -------
+        np array of shape (n,)
+            The value of the dissimilarity function-based distribution at the points
+        '''
+
+        # Create an empty list to store the values of the distribution
+        P = []
+
+        # for each point in the list
+        for p in points:
+            # Compute the value of the distribution at the point
+            P.append(self.computeP(p))
+
+        # convert the list to a numpy array
+        return np.array(P)
+    
+    def sample(self, n):
+        '''
+        Samples from the dissimilarity-function-based distribution
+
+        Parameters
+        ----------
+        n : int
+            The number of points to sample
+
+        Returns
+        -------
+        np array of shape (n,N)
+            The sampled points
+        '''
+
+        # Create an empty list to store the points
+        points = []
+
+        # While the list has less points than n
+        while len(points) < n:
+            # Generate a random point from the Gaussian distribution
+            point = np.random.multivariate_normal(self.mean, self.cov)
+
+            # Generate a random number between 0 and 1
+            r = np.random.rand()
+
+            # get the probability of the point using the Gaussian distribution
+            q = gaussian(point, self.mean, self.cov)
+
+            # get the probability of the point using the dissimilarity function
+            p = self.computeP(point)
+
+            # if the random number is less than the ratio of the probabilities
+            if r < p/q:
+                # add the point to the list
+                points.append(point)
+        # convert the list to a numpy array
+        return np.array(points)
+    
+    def likelyhoodRatio(self, data):
+        '''
+        Computes the value of the likelihood ratio of the dissimilarity-function-based distribution
+
+        Parameters
+        ----------
+        data : np array of shape (M,N)
+            The data to compute the likelihood ratio
+
+        Returns
+        -------
+        float
+            The value of the likelihood ratio
+        '''
+
+        # Compute the value of the distribution at the data
+        Pdata = self.computePlist(data)
+
+        # Compute the value of the likelihood ratio
+        return np.prod(Pdata)
+
 #fix the seed
 np.random.seed(42)
 
@@ -209,7 +432,6 @@ onlyShape = False
 # flag to only plot the points in the shape
 onlyPoints = False
 
-
 ############################################ PROCESSING ############################################
 
 if onlyShape:
@@ -250,94 +472,43 @@ if onlyPoints:
     plt.show()
     sys.exit()
 
-
-# get an approximation of the covariance matrix
-cov = np.cov(dataT, rowvar=False)
-
-#get an approximation of the mean
-mean = np.mean(dataT, axis=0)
-
 # Create a grid of points
 x = np.linspace(xlim[0], xlim[1], res)
 y = np.linspace(ylim[0], ylim[1], res)
 X, Y = np.meshgrid(x, y)
 
-# Select some random points using the normal distribution
-datab = np.random.multivariate_normal(mean, cov, nB)
+# create a dissimilarity distribution object to approximate the dataT distribution
+dissimDist = dissimDistribution(dataT, gam, gamma2, c)
 
-# Compute the value of the Gaussian function at each point of the selected points using mean and cov
-gaussb = np.zeros(datab.shape[0])
-for i in range(datab.shape[0]):
-    gaussb[i] = gaussian(datab[i], mean, cov)
+# Get the value of F
+F = dissimDist.F
 
-# Compute the value of the objective function at each point of the selected points using dataT as the training data
-jgammab = np.zeros(datab.shape[0])
-for i in range(datab.shape[0]):
-    jgammab[i] = dissimFunct(dataT, datab[i], gam, gamma2)
+# get a flattened list of the points in the grid
+points = np.array([X.flatten(), Y.flatten()]).T
 
-# Compute the value of the objective function at each point of the selected points using dataT as the training data
-j0b = np.zeros(datab.shape[0])
-for i in range(datab.shape[0]):
-    j0b[i] = dissimFunct(dataT, datab[i], 0, gamma2)
+# Apply the computePlist method to the grid
+P = dissimDist.computePlist(points.tolist())
 
-# Calculate b as c*sum(jgamma)/sum(j0)
-b = c*np.sum(jgammab)/np.sum(j0b)
+# Reshape the result to the shape of the grid
+P = P.reshape(res, res)
 
-# Calculate upsilon as the equivalent covariance for the gaussian closest to the Jgamma-based probability distribution
-upsilon = n/(2*b) * cov
+# Calculate the value of the Gaussian function over the grid
+Zgauss = []
+for p in points:
+    Zgauss.append(gaussian(p, dissimDist.mean, dissimDist.cov))
+Zgauss = np.array(Zgauss).reshape(res, res)
 
-# Create a new dataset with a normal distribution with mean and covariance matrix
-dataIS = np.random.multivariate_normal(mean, upsilon, nIS)
+# Calculate the integral of P
+intP = np.sum(P)*(x[1]-x[0])*(y[1]-y[0])/(res**2)
 
-# Compute the value of the objective function at each point of dataIS using dataT as the training data
-jgammaIS = np.zeros(nIS)
-for i in range(nIS):
-    jgammaIS[i] = dissimFunct(dataT, dataIS[i], gam, gamma2)
+# Calculate the likelihood ratio over dataT
+LR = dissimDist.likelyhoodRatio(dataT)
 
-# Compute the value of the gaussian function at each point of dataIS using mean and upsilon
-q = np.zeros(nIS)
-for i in range(nIS):
-    q[i] = gaussian(dataIS[i], mean, upsilon)
+# Get the value of b
+b = dissimDist.b
 
-# Calculate exp(-c*jgammaIS)/q for each point of dataIS
-exp = np.divide(np.exp(-c*jgammaIS),q)
-
-# Calculate the inverse of F as 1/nIS * sum(exp(-c*jgammaIS)/q)
-Finv = 1/nIS * np.sum(exp)
-
-# Calculate the value of F as 1/Finv
-F = 1/Finv
-
+# Print the value of F
 print('F: ', F)
-
-# Compute the value of the objective function at each point of the grid using dataT as the training data
-jgamma = np.zeros(X.shape)
-for i in range(X.shape[0]):
-    for j in range(X.shape[1]):
-        jgamma[i, j] = dissimFunct(dataT, np.array([X[i, j], Y[i, j]]), gam, gamma2)
-
-# Compute the value of the Gaussian function at each point of the grid
-Zgauss = np.zeros(X.shape)
-for i in range(X.shape[0]):
-    for j in range(X.shape[1]):
-        Zgauss[i, j] = gaussian(np.array([X[i, j], Y[i, j]]), mean, cov)
-
-# Calculate P as F*exp(-c*j) for each point of the grid
-P = F*np.exp(-c*jgamma)
-
-# Calculate the dissimilarity function at each point of dataT using dataT as the training data
-jgammaData = np.zeros(n)
-for i in range(n):
-    jgammaData[i] = dissimFunct(dataT, dataT[i], gam, gamma2)
-
-# Calculate Pdata as F*exp(-c*j) for each point of dataT
-Pdata = F*np.exp(-c*jgammaData)
-
-# Calculate the likelihood ratio as the multiplication of all the values of Pdata
-LR = np.prod(Pdata)
-
-# integrate the values of P over the grid
-intP = np.sum(P)*(xlim[1]-xlim[0])*(ylim[1]-ylim[0])/res**2
 
 # Print the value of the integral of P
 print('intP: ', intP)
@@ -351,8 +522,8 @@ print('c: ', c)
 # Print the value of b
 print('b: ', b)
 
-# generate a sample of points using the sample rejection algorithm
-dataSR = sampleReject(F, c, gam, gamma2, mean, cov, nSR)
+# generate a sample of points using the distribution
+dataSR = dissimDist.sample(nSR)
 
 ############################################ PLOTTING ############################################
         
