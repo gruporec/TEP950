@@ -493,7 +493,37 @@ class dissimClas:
             # compute the probability of the class
             P.append(Pdissim*self.Pk[k])
         # normalize the probabilities to sum to 1
-        return np.array(P)/np.sum(P)
+        return np.array(P)/np.sum(P)    
+    
+    def getClass0Probabilities(self, x):
+        '''
+        Computes the probability of each class for a given point
+
+        Parameters
+        ----------
+        x : np array of shape (N,)
+            The point at which to compute the probability of each class
+
+        Returns
+        -------
+        np array of shape (K,)
+            The probability of each class
+        '''
+
+        # create an empty list to store the probabilities
+        P = []
+
+        # for each class
+        for k in range(self.K):
+            # compute the value of the dissimilarity-function-based distribution at the point
+            Pdissim = self.dissimDist[k].computeP(x)
+            # compute the probability of the class
+            P.append(Pdissim*self.Pk[k])
+        # normalize the probabilities to sum to 1
+        Pnorm=np.array(P)/np.sum(P)
+
+        # return only the probability of the first class
+        return Pnorm[0]
     
     def classify(self, x):
         '''

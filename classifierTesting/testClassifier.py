@@ -55,13 +55,13 @@ if __name__ == '__main__':
 
     # define the mean and variance of the Gaussian function
     meanb = np.array([0, 1*np.sqrt(3)-1])
-    varb = np.array([[0.1, 0], [0, 1]])
+    varb = np.array([[0.2, 0], [0, 0.4]])
 
     # flag to only plot the shape
     onlyShape = False
 
     # flag to only plot the points in the shape
-    onlyPoints = False
+    onlyPoints = True
 
     ############################################ PROCESSING ############################################
 
@@ -171,8 +171,8 @@ if __name__ == '__main__':
 
     pDissim=[]
     # Get the class probabilities for each point in the grid using the dissimilarity distribution classifier ussing multiprocessing
-    for i in range(len(points)):
-        pDissim.append(dissimClass.getClassProbabilities(points[i])[0])
+    with mp.Pool(mp.cpu_count()) as pool:
+        pDissim=list(tqdm.tqdm(pool.imap(dissimClass.getClass0Probabilities, points), total=len(points)))
     pDissim = np.array(pDissim)
 
     # Get the class probabilities for each point in the grid using the qda classifier
