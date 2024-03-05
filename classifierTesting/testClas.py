@@ -41,28 +41,17 @@ xlim = [-2, 2]
 ylim = [-2, 2]
 
 # Name the shape for the filename
-shapeName = 'triangle'
-
-# # define take 5 points from a circle of radius 1 1
-# t = np.linspace(0, 2*np.pi, 5, endpoint=False)
-# x = np.cos(t)
-# y = np.sin(t)
-# corners1 = np.array([x, y]).T
-
-# # scale the shape and rotate it 360/10 degrees
-# corners2 = corners1*0.5
-# corners2 = np.dot(corners2, np.array([[np.cos(np.pi/5), -np.sin(np.pi/5)], [np.sin(np.pi/5), np.cos(np.pi/5)]]))
-
-# # merge the two shapes taking points alternatively
-# corners = np.zeros([10, 2])
-# corners[1::2] = corners1
-# corners[0::2] = corners2
+shapeName = 'triangleAndGaussian'
 
 # define a triangle
-corners = np.array([[-1, -0.5], [1, -0.5], [0, 1*np.sqrt(3)-0.5]])
+corners = np.array([[0, -0.5], [2, -0.5], [1, 1*np.sqrt(3)-0.5]])
+
+# define the mean and variance of the Gaussian function
+meanb = np.array([-1, 0])
+varb = 1
 
 # flag to only plot the shape
-onlyShape = False
+onlyShape = True
 
 # flag to only plot the points in the shape
 onlyPoints = False
@@ -70,8 +59,14 @@ onlyPoints = False
 ############################################ PROCESSING ############################################
 
 if onlyShape:
-    #plot the shape
-    plt.plot(corners[:, 0], corners[:, 1], 'k-')
+    #plot the shape as a closed polygon, repeat the first point to close the polygon
+    plt.plot(np.append(corners[:, 0], corners[0, 0]), np.append(corners[:, 1], corners[0, 1]))
+    # plot a point in the mean of the Gaussian function
+    plt.scatter(meanb[0], meanb[1], c='red', s=10, marker='x')
+    # plot a circle with the variance of the Gaussian function
+    circle = plt.Circle(meanb, varb, color='r', fill=False)
+    plt.gca().add_artist(circle)
+
     # equal aspect ratio
     plt.axis('equal')
     plt.show()

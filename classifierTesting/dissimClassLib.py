@@ -198,6 +198,10 @@ class dissimDistribution:
             # store nB
             self.nB = nB
 
+        #make sure both n are integers
+        self.nIS = int(self.nIS)
+        self.nB = int(self.nB)
+
         # get an approximation of the covariance matrix
         self.cov = np.cov(dataT, rowvar=False)
 
