@@ -8,6 +8,7 @@ import dissimClassLib as dcl
 import sklearn.discriminant_analysis as sklda
 import multiprocessing as mp
 import tqdm
+import winsound
 
 if __name__ == '__main__':
     #fix the seed
@@ -31,11 +32,11 @@ if __name__ == '__main__':
     nSR = 200
 
     # gamma parameter. Equivalent gamma will be gam/gamma2. gamma2 is not really working too well when it comes to getting the value of F
-    gam = [0,1]
+    gam = [5,0]
     gamma2=1
 
     #c fraction
-    cf=[2,12]
+    cf=[32,2]
 
     # c parameter = n/cf
     c = [nT[i]/cf[i] for i in range(len(nT))]
@@ -61,7 +62,7 @@ if __name__ == '__main__':
     onlyShape = False
 
     # flag to only plot the points in the shape
-    onlyPoints = True
+    onlyPoints = False
 
     ############################################ PROCESSING ############################################
 
@@ -456,3 +457,10 @@ if __name__ == '__main__':
 
     # close the figure
     plt.close()
+
+    frequency = [2000, 2500, 2000]  # Set Frequency To 2500 Hertz
+    duration = 200  # Set Duration To 500 ms == 0.5 second
+
+    # Play the beeps
+    for i in range(3):
+        winsound.Beep(frequency[i], duration)
