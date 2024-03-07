@@ -1,6 +1,8 @@
 import numpy as np
 import scipy.sparse as sp
 import qpsolvers as qp
+import tqdm
+import multiprocessing as mp
 
 def gaussian(x:np.ndarray, mean:np.ndarray, cov:np.ndarray) -> float:
     '''
@@ -101,9 +103,9 @@ def sampleReject(dataT,F,c,gam,gamma2,mean,cov,n):
     Parameters
     ----------
     F : float
-        The value of the F constant
+        The value of the F parameter
     c : float
-        The value of the c constant
+        The value of the c parameter
     gam : float
         The value of the gamma parameter. Equivalent gamma will be gam/gamma2
     gamma2 : float
@@ -147,7 +149,7 @@ def sampleReject(dataT,F,c,gam,gamma2,mean,cov,n):
 
 class dissimDistribution:
     '''Implements a class to manage a dissimilarity-function-based distribution'''
-    def __init__(self, dataT, gam, gamma2, c, F=None, nIS=None, nB=None):
+    def __init__(self, dataT, gam, gamma2, c, F=None, nIS=None, nB=None, useMP=False):
         '''
         Initializes the dissimilarity-function-based distribution
 
@@ -160,22 +162,25 @@ class dissimDistribution:
         gamma2 : float
             The value of the gamma2 parameter. Equivalent gamma will be gam/gamma2
         c : float
-            The value of the c constant
+            The value of the c parameter
         F : float
-            The value of the F constant. If None, it will be calculated
+            The value of the F parameter. If None, it will be calculated
         nIS : int
             The number of points to use for Importance Sampling. If None, it will be stimated from the dimension of the data
         nB : int
             The number of points to use for b calculation. If None, it will be stimated from the dimension of the data
+        useMP : bool
+            If True, will use multiprocessing to speed up the computation
         '''
-
+        # store the useMP parameter
+        self.useMP = useMP
         # store the training data
         self.dataT = dataT
         # store the gamma parameter
         self.gam = gam
         # store the gamma2 parameter
         self.gamma2 = gamma2
-        # store the c constant
+        # store the c parameter
         self.c = c
 
         # get the dimension of the data
@@ -230,14 +235,20 @@ class dissimDistribution:
         datab = np.random.multivariate_normal(self.mean, self.cov, self.nB)
 
         # Compute the value of the objective function at each point of the selected points using dataT as the training data
-        jgammab = np.zeros(self.nB)
-        for i in range(self.nB):
-            jgammab[i] = dissimFunct(self.dataT, datab[i], self.gam, self.gamma2)
+        if self.useMP:
+            jgammab = np.array(list(tqdm.tqdm(mp.Pool(mp.cpu_count()).imap(dissimFunct, [self.dataT]*self.nB, datab, [self.gam]*self.nB, [self.gamma2]*self.nB), total=self.nB)))
+        else:
+            jgammab = np.zeros(self.nB)
+            for i in range(self.nB):
+                jgammab[i] = dissimFunct(self.dataT, datab[i], self.gam, self.gamma2)
 
         # Compute the value of the objective function at each point of the selected points using dataT as the training data
-        j0b = np.zeros(self.nB)
-        for i in range(self.nB):
-            j0b[i] = dissimFunct(self.dataT, datab[i], 0, 1)
+        if self.useMP:
+            j0b = np.array(list(tqdm.tqdm(mp.Pool(mp.cpu_count()).imap(dissimFunct, [self.dataT]*self.nB, datab, [0]*self.nB, [1]*self.nB), total=self.nB)))
+        else:
+            j0b = np.zeros(self.nB)
+            for i in range(self.nB):
+                j0b[i] = dissimFunct(self.dataT, datab[i], 0, 1)
 
         # Calculate b as c*sum(jgamma)/sum(j0)
         self.b = self.c*np.sum(jgammab)/np.sum(j0b)
@@ -249,14 +260,20 @@ class dissimDistribution:
         dataIS = np.random.multivariate_normal(self.mean, upsilon, self.nIS)
 
         # Compute the value of the objective function at each point of dataIS using dataT as the training data
-        jgammaIS = np.zeros(self.nIS)
-        for i in range(self.nIS):
-            jgammaIS[i] = dissimFunct(self.dataT, dataIS[i], self.gam, self.gamma2)
+        if self.useMP:
+            jgammaIS = np.array(list(tqdm.tqdm(mp.Pool(mp.cpu_count()).imap(dissimFunct, [self.dataT]*self.nIS, dataIS, [self.gam]*self.nIS, [self.gamma2]*self.nIS), total=self.nIS)))
+        else:
+            jgammaIS = np.zeros(self.nIS)
+            for i in range(self.nIS):
+                jgammaIS[i] = dissimFunct(self.dataT, dataIS[i], self.gam, self.gamma2)
 
         # Compute the value of the gaussian function at each point of dataIS using mean and upsilon
-        q = np.zeros(self.nIS)
-        for i in range(self.nIS):
-            q[i] = gaussian(dataIS[i], self.mean, upsilon)
+        if self.useMP:
+            q = np.array(list(tqdm.tqdm(mp.Pool(mp.cpu_count()).imap(gaussian, dataIS, [self.mean]*self.nIS, [upsilon]*self.nIS), total=self.nIS)))
+        else:
+            q = np.zeros(self.nIS)
+            for i in range(self.nIS):
+                q[i] = gaussian(dataIS[i], self.mean, upsilon)
 
         # Calculate exp(-c*jgammaIS)/q for each point of dataIS
         exp = np.divide(np.exp(-self.c*jgammaIS),q)
@@ -309,9 +326,12 @@ class dissimDistribution:
         P = []
 
         # for each point in the list
-        for p in points:
-            # Compute the value of the distribution at the point
-            P.append(self.computeP(p))
+        if self.useMP:
+            P = list(tqdm.tqdm(mp.Pool(mp.cpu_count()).imap(self.computeP, points), total=len(points)))
+        else:
+            for p in points:
+                # Compute the value of the distribution at the point
+                P.append(self.computeP(p))
 
         # convert the list to a numpy array
         return np.array(P)
@@ -355,7 +375,7 @@ class dissimDistribution:
         # convert the list to a numpy array
         return np.array(points)
     
-    def likelyhoodRatio(self, data):
+    def likelyhoodRatio(self, data=None):
         '''
         Computes the value of the likelihood ratio of the dissimilarity-function-based distribution
 
@@ -369,6 +389,10 @@ class dissimDistribution:
         float
             The value of the likelihood ratio
         '''
+        # if data is None
+        if data is None:
+            # use the training data as the data
+            data = self.dataT
 
         # Compute the value of the distribution at the data
         Pdata = self.computePlist(data)
@@ -379,7 +403,7 @@ class dissimDistribution:
 class dissimClas:
     '''Implements a bayesian classifier based on the dissimilarity-function-based distribution'''
     
-    def __init__(self, X, Y, gammak, ck, Fk=None, Pk=None, nISk=None, nBk=None):
+    def __init__(self, X, Y, gammak, ck, Fk=None, Pk=None, nISk=None, nBk=None, useMP=False, optimizegammac=False, stepGamma=0.1, stepC=1, maxIter=10):
         '''
         Initializes the dissimilarity-function-based classifier
 
@@ -392,15 +416,25 @@ class dissimClas:
         gammak : np array of shape (K,) or float
             The value of the gamma parameter for each class. If a float, it will be used for all classes
         ck : np array of shape (K,) or float
-            The value of the c constant for each class. If a float, it will be used for all classes
+            The value of the c parameter for each class. If a float, it will be used for all classes
         Fk : np array of shape (K,) or float
-            The value of the F constant for each class. If None, it will be calculated. If a float, it will be used for all classes
+            The value of the F parameter for each class. If None, it will be calculated. If a float, it will be used for all classes
         Pk : np array of shape (K,)
             The base probability of each class. If None, it will be calculated. If a float, it will be used for all classes
         nISk : np array of shape (K,) or float
             The number of points to use for Importance Sampling for each class. If None, it will be stimated from the dimension of the data. If a float, it will be used for all classes
         nBk : np array of shape (K,) or float
             The number of points to use for b calculation for each class. If None, it will be stimated from the dimension of the data. If a float, it will be used for all classes
+        useMP : bool
+            If True, will use multiprocessing to speed up the computation
+        optimizegammac : bool
+            If True, will attempt to optimize the values of c and gamma for each class (EXPERIMENTAL)
+        stepGamma : float
+            The step to use for the gamma parameter optimization
+        stepC : float
+            The step to use for the c parameter optimization
+        maxIter : int
+            The maximum number of iterations to use for the optimization
         '''
         # store the training data
         self.X = X
@@ -462,11 +496,19 @@ class dissimClas:
         else:
             # store nBk as the array
             self.nBk = nBk
-
+ 
         # create a list of dissimilarity-function-based distributions for each class
         self.dissimDist = []
         for k in range(self.K):
-            self.dissimDist.append(dissimDistribution(self.Xk[k], self.gammak[k], 1, self.ck[k], Fk, self.nISk[k], self.nBk[k]))
+            # if optimizegammac is True
+            if optimizegammac:
+                # calculate cf for the optimization
+                cf = len(self.Xk[k])/self.ck[k]
+                # use the optimized distributions
+                self.dissimDist.append(findOptimalCGamma(self.Xk[k], self.gammak[k], cf, self.nISk[k], self.nBk[k], useMP=useMP, returnDist=True, stepGamma=stepGamma, stepC=stepC, maxIter=maxIter))
+            else:
+                # use the standard distributions
+                self.dissimDist.append(dissimDistribution(self.Xk[k], self.gammak[k], 1, self.ck[k], Fk, self.nISk[k], self.nBk[k], useMP=useMP))
         
     def getClassProbabilities(self, x):
         '''
@@ -545,3 +587,136 @@ class dissimClas:
 
         # return the class with the highest probability
         return np.argmax(P)
+    
+    def getLikelihoodRatio(self, x=None):
+        '''
+        Computes the value of the likelihood ratio of the dissimilarity-function-based distributions
+
+        Parameters
+        ----------
+        x : np array of shape (K,N) or None
+            The data to compute the likelihood ratio. If None, the training data will be used
+
+        Returns
+        -------
+        float
+            The value of the likelihood ratio
+        '''
+
+        # if x is None
+        if x is None:
+            # compute the likelihood ratio for the training data
+            return [self.dissimDist[k].likelyhoodRatio(self.Xk[k]) for k in range(self.K)]
+        else:
+            # compute the likelihood ratio for the point
+            return [self.dissimDist[k].computeP(x[k]) for k in range(self.K)]
+
+def findOptimalCGamma(dataT, gam=0, cf=2, nIS=None, nB=None, useMP=False, returnDist=False, stepGamma=0.1, stepC=1, maxIter=10):
+    '''
+    Find the best values to use for the c parameter and the gamma parameter for the dissimilarity-function-based distribution
+
+    Parameters
+    ----------
+    dataT : np array of shape (M,N)
+        The training data matrix
+    gam : float
+        The initial value of the gamma parameter
+    cf : float
+        The initial value of the cf parameter
+    nIS : int
+        The number of points to use for Importance Sampling. If None, it will be stimated from the dimension of the data
+    nB : int
+        The number of points to use for b calculation. If None, it will be stimated from the dimension of the data
+    useMP : bool
+        If True, will use multiprocessing to speed up the computation
+    returnDist : bool
+        If True, will return the dissimilarity-function-based distribution
+    stepGamma : float
+        The step to use for the gamma parameter
+    stepC : float
+        The step to use for the cf parameter
+
+    Returns
+    -------
+    float
+        The best value of the c parameter
+    float   
+        The best value of the gamma parameter
+        or
+    dissimDistribution
+        The dissimilarity-function-based distribution
+    '''
+
+    # if nIS is None
+    if nIS is None:
+        # calculate nIS
+        nIS = 100**len(dataT[0])
+
+    # if nB is None
+    if nB is None:
+        # calculate nB
+        nB = 100**len(dataT[0])
+
+    # get the number of points in the training set
+    nT = len(dataT)
+
+    # list of tested values for c and gamma
+    tested = []
+
+    # create a counter for the number of iterations
+    i = 0
+
+    # create a flag to stop the loop
+    stop = False
+
+    bestL=None
+    # while the flag is False and the number of iterations is less than the maximum number of iterations
+    while not stop and i < maxIter:
+
+        # create a list of values for c and gamma to try around the current values
+        toTest = [[cf, gam], [cf+stepC, gam], [cf-stepC, gam], [cf, gam+stepGamma], [cf, gam-stepGamma]]
+
+        # for each value of cf and gamma to try
+        for cf, gamma in toTest:
+
+            # if the value of cf and gamma has not been tested
+            if [cf, gamma] not in tested:
+                # if c>0 and gamma>=0
+                if cf>0 and gamma>=0:
+                    c= nT/cf
+                    # create a dissimilarity-function-based distribution with the current values of c and gamma
+                    dissimDist = dissimDistribution(dataT, gamma, 1, c, nIS, nB, useMP=useMP)
+
+                    # calculate the likelihood ratio
+                    iterL = dissimDist.likelyhoodRatio()
+
+                    # if the likelihood ratio is better than the best likelihood ratio
+                    if bestL is None or iterL>bestL:
+                        # store the best values of c and gamma
+                        bestCf = cf
+                        bestGamma = gamma
+                        bestL = iterL
+                    # add the value of c and gamma to the list of tested values
+                    tested.append([cf, gamma])
+        # increase the counter of iterations
+        i += 1
+        # if the best value of c and gamma is not the same as the initial value of c and gamma
+        if bestCf != cf or bestGamma != gam:
+            # set the initial value of c and gamma to the best value
+            cf = bestCf
+            gam = bestGamma
+        else:
+            # set the flag to True to stop the loop
+            stop = True
+
+    # if returnDist is True
+    if returnDist:
+        # create a dissimilarity-function-based distribution with the best values of c and gamma
+        dissimDist = dissimDistribution(dataT, gam, 1, nT/cf, nIS, nB, useMP=useMP)
+        # return the dissimilarity-function-based distribution
+        return dissimDist
+    else:
+        # return the best values of c and gamma
+        return bestCf, bestGamma
+
+                

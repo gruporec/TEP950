@@ -49,7 +49,7 @@ if __name__ == '__main__':
     ylim = [-2, 2]
 
     # Name the shape for the filename
-    shapeName = 'triangleAndGaussian3'
+    shapeName = 'triangleAndGaussianOpt'
 
     # define a triangle
     corners = np.array([[-1, -1], [1, -1], [0, 1*np.sqrt(3)-1]])
@@ -162,6 +162,10 @@ if __name__ == '__main__':
 
     # create a dissimilarity distribution classifier
     dissimClass = dcl.dissimClas(Xtrain, ytrain, gam, c)
+
+    # print the values of gamma and cf
+    print('Gamma: ' + str(gam))
+    print('cf: ' + str(cf))
 
     # create a qda classifier
     qda = sklda.QuadraticDiscriminantAnalysis()
