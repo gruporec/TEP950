@@ -13,6 +13,65 @@ import sklearn.datasets as skds
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import confusion_matrix
 import sklearn.decomposition as skd
+import scipy.optimize as opt
+import itertools
+
+def errorsWithDFCgam(gam,cf):
+    '''
+    Count the fraction of errors of the dissimilarity distribution classifier on the validation set
+
+    Parameters
+    ----------
+    gam : list
+        List with the values of gamma
+    '''
+
+    # define the bounds for the values of c
+    bounds = [(2, None)]*nC
+
+    # optimize the value of c
+    res = opt.minimize(errorsWithDFCc, cf, args=gam, method='Nelder-Mead', options={'maxiter': 10}, bounds=bounds)
+
+    # get the value of c
+    cf = res.x
+    cd = nT/cf
+
+    # create a dissimilarity distribution classifier
+    dissimClass = dcl.dissimClas(Xtr, ytr, gam, cd, nISk=nIS, nBk=nB)
+
+    # get the predictions for the validation set
+    with mp.Pool(mp.cpu_count()) as pool:
+        ypred = np.array(list(tqdm.tqdm(pool.imap(dissimClass.classify, Xv), total=Xv.shape[0])))
+    
+    print('gamma: ' + str(gam) + ' c: ' + str(cf) + ' error: ' + str(np.sum(ypred != yv)/len(yv)))
+
+    # count the fraction of errors
+    return np.sum(ypred != yv)/len(yv)
+
+def errorsWithDFCc(cf,gam):
+    '''
+    Count the fraction of errors of the dissimilarity distribution classifier on the validation set
+
+    Parameters
+    ----------
+    cf : float
+        Value of cf
+    '''
+
+    cd= nT/cf
+
+    # create a dissimilarity distribution classifier
+    dissimClass = dcl.dissimClas(Xtr, ytr, gam, cd, nISk=nIS, nBk=nB)
+
+    # get the predictions for the validation set
+    with mp.Pool(mp.cpu_count()) as pool:
+        ypred = np.array(list(tqdm.tqdm(pool.imap(dissimClass.classify, Xv), total=Xv.shape[0])))
+
+    print('gamma: ' + str(gam) + ' c: ' + str(cf) + ' error: ' + str(np.sum(ypred != yv)/len(yv)))
+
+    # count the fraction of errors
+    return np.sum(ypred != yv)/len(yv)
+
 
 if __name__ == '__main__':
     #fix the seed
@@ -23,11 +82,17 @@ if __name__ == '__main__':
     # fraction of data to use for validation
     n = 0.6
 
+    # number of cross-validation folds
+    nFolds = 5
+
+    # fraction of data to use for validation in cross-validation
+    nCV = 0.2
+
     # number of points for Importance Sampling
     nIS = 1000
 
     # number of points for b calculation
-    nB = 2000
+    nB = 1000
 
     # gamma parameter. Equivalent gamma will be gam/gamma2. gamma2 is not really working too well when it comes to getting the value of F so keep at 1 for now
     gam = 0.3
@@ -63,7 +128,7 @@ if __name__ == '__main__':
 
     # split the dataset into training and validation sets
     Xtrain, Xval, ytrain, yval = train_test_split(data.data, data.target, test_size=n, random_state=42, stratify=data.target)
-    
+
     # get the number of classes
     nC = len(np.unique(ytrain))
 
@@ -99,21 +164,47 @@ if __name__ == '__main__':
     # get the value of c as the number of points in the training set for each class divided by the fraction
     c = nT/cf
 
-    #separate the training set into the different classes
-    XtrainSep = [Xtrain[ytrain == i] for i in range(nC)]
-    # get a value of sigma for each class
-    sigmaK = [np.cov(XtrainSep[i].T) for i in range(nC)]
-    #calculate the theoretical value of F when gamma=0 and cf=2 as e^(1/2)/((2*pi)^(d/2)*det(Sigma)^(1/2))
-    f0= [np.exp(0.5)/(np.power(2*np.pi, Xtrain.shape[1]/2)*np.sqrt(np.linalg.det(sigmaK[i]))) for i in range(nC)]
+    # create two lists to store the values of gamma and c obtained in each iteration
+    gammaList = []
+    cList = []
 
-    #calculate c0 as the value of c when gamma=0 and cf=2
-    c0 = nT/2
+    # start the optimization loop
+    for i in range(nFolds):
+        # separate the training set into a new training set and a validation set
+        Xtr, Xv, ytr, yv = train_test_split(Xtrain, ytrain, test_size=nCV, random_state=i, stratify=ytrain)
 
+        # define the initial values of gamma and c as a concatenation of the values of gamma and c
+        x0 = np.concatenate((gam, cf))
+
+        # get the number of training samples in each class
+        nT = np.bincount(ytr)
+
+        # define bounds for the values of gamma and cf as (0,None) for gamma and (2,None) for cf
+        bounds = [(0, None)]*nC
+
+        # optimize the values of gamma and c
+        res = opt.minimize(errorsWithDFCgam, gam,args=cf, method='Nelder-Mead', bounds=bounds, options={'maxiter': 10})
+
+        print('iteration ' + str(i) + ' done, results: '+ str(res.x) + ' with error ' + str(res.fun))
+        
+        # get the values of gamma and c obtained in this iteration
+        gammaList.append(res.x[:int(len(res.x)/2)])
+        cList.append(res.x[int(len(res.x)/2):])
+    
+    # get the mean of the values of gamma and c obtained in all iterations
+    gam = np.mean(gammaList, axis=0)
+    cf = np.mean(cList, axis=0)
+
+    # get the number of points in each class
+    nT = np.bincount(ytrain)
+
+    #calculate the value of c
+    c = nT/cf
+
+    print('Final values: gamma: ' + str(gam) + ' c: ' + str(c))
+        
     # create a dissimilarity distribution classifier
     dissimClass = dcl.dissimClas(Xtrain, ytrain, gam, c, nISk=nIS, nBk=nB)
-
-    #create a QDA dissimilarity distribution classifier
-    qdaDissimClass = dcl.dissimClas(Xtrain, ytrain, 0, c0, Fk=f0)
 
     # calculate cf
     cf = nT/dissimClass.ck
@@ -130,18 +221,8 @@ if __name__ == '__main__':
     if doQDA:
         ypredqda = qda.predict(Xval)
 
-    with mp.Pool(mp.cpu_count()) as pool:
-        ypredqdad = np.array(list(tqdm.tqdm(pool.imap(qdaDissimClass.classify, Xval), total=Xval.shape[0])))
-
-    # get the value of F for both dissimilarity classifiers
-    print('F: ' + str(dissimClass.Fk))
-
-    print('F QDA: ' + str(qdaDissimClass.Fk))
-
     #get the confusion matrices for both classifiers
     cm = confusion_matrix(yval, ypred)
-
-    cmqdad = confusion_matrix(yval, ypredqdad)
 
     if doQDA:
         cmqda = confusion_matrix(yval, ypredqda)
@@ -153,9 +234,6 @@ if __name__ == '__main__':
     if doQDA:
         print('QDA Classifier')
         print(cmqda)
-
-    print('Dissimilarity Classifier QDA')
-    print(cmqdad)
 
     # save the confusion matrices to a file
     np.savetxt('confusionMatrices/' + datasetName + 'DFC_gam' + str(gam) + '_cf' + str(cf) +'.csv', cm, delimiter=',')
@@ -170,31 +248,12 @@ if __name__ == '__main__':
     if doQDA:
         cmqda = cmqda/cmqda.sum(axis=1)[:, np.newaxis]
 
-
-    # separate the validation set into the different classes
-    XvalSep = [Xval[yval == i] for i in range(nC)]
-    # get the likelihood of the validation set
-    loglikelihood = dissimClass.getLikelihoodRatio(XvalSep)
-
-    # get the likelihood of the validation set for the QDA classifier
-    loglikelihoodqda = qdaDissimClass.getLikelihoodRatio(XvalSep)
+    # get the likelihood of the training set
+    likelihood = dissimClass.getLikelihoodRatio()
 
     print('cf: ' + str(cf))
     print('gamma: ' + str(gam))
-    print('Log Likelihood: ' + str(loglikelihood))
-    print('Log Likelihood QDA: ' + str(loglikelihoodqda))
-
-    # undo the log likelihood
-    likelihood = np.exp(loglikelihood)
-    likelihoodqda = np.exp(loglikelihoodqda)
-
     print('Likelihood: ' + str(likelihood))
-    print('Likelihood QDA: ' + str(likelihoodqda))
-
-    #divide the likelihoods
-    likelihoodratio = [loglikelihoodqda[i]/loglikelihood[i] for i in range(nC)]
-
-    print('Likelihood Ratio: ' + str(likelihoodratio))
 
     # print some interesting metrics about the classifier performance
     print('Accuracy: ' + str(np.sum(np.diag(cm))/np.sum(cm)))

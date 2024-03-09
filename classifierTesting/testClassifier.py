@@ -26,17 +26,17 @@ if __name__ == '__main__':
     nIS = 10000
 
     # number of points for b calculation
-    nB = 10000
+    nB = 100000
 
     # number of points to generate using the sample rejection algorithm
     nSR = 200
 
     # gamma parameter. Equivalent gamma will be gam/gamma2. gamma2 is not really working too well when it comes to getting the value of F
-    gam = [5,0]
+    gam = [20,0]
     gamma2=1
 
     #c fraction
-    cf=[32,2]
+    cf=[64,2]
 
     # c parameter = n/cf
     c = [nT[i]/cf[i] for i in range(len(nT))]
@@ -49,7 +49,7 @@ if __name__ == '__main__':
     ylim = [-2, 2]
 
     # Name the shape for the filename
-    shapeName = 'triangleAndGaussianOpt'
+    shapeName = 'triangleAndGaussian5'
 
     # define a triangle
     corners = np.array([[-1, -1], [1, -1], [0, 1*np.sqrt(3)-1]])
@@ -234,6 +234,17 @@ if __name__ == '__main__':
         for j in range(nClasses):
             # calculate the number of points in the validation set that are of the true class i and were predicted as class j
             confMatDissim[i, j] = np.sum(np.logical_and(yval == i, yPredDissim == j))
+
+    # get the class likelihood ratios 
+    #divide the validation data by classes into a list
+    Xval0 = Xval[yval==0]
+    Xval1 = Xval[yval==1]
+    XvalSep=[Xval0,Xval1]
+
+    #get the class likelihood ratios
+    lhr = dissimClass.getLikelihoodRatio(XvalSep)
+    print('Likelihood Ratios')
+    print(lhr)
 
     # print the confusion matrix
     print('Confusion matrix for the dissimilarity distribution classifier')

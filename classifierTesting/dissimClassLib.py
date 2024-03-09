@@ -397,8 +397,11 @@ class dissimDistribution:
         # Compute the value of the distribution at the data
         Pdata = self.computePlist(data)
 
+        # compute the logarithm of the values
+        Pdata = np.log(Pdata)
+
         # Compute the value of the likelihood ratio
-        return np.prod(Pdata)
+        return np.sum(Pdata)
     
 class dissimClas:
     '''Implements a bayesian classifier based on the dissimilarity-function-based distribution'''
@@ -507,8 +510,15 @@ class dissimClas:
                 # use the optimized distributions
                 self.dissimDist.append(findOptimalCGamma(self.Xk[k], self.gammak[k], cf, self.nISk[k], self.nBk[k], useMP=useMP, returnDist=True, stepGamma=stepGamma, stepC=stepC, maxIter=maxIter))
             else:
-                # use the standard distributions
-                self.dissimDist.append(dissimDistribution(self.Xk[k], self.gammak[k], 1, self.ck[k], Fk, self.nISk[k], self.nBk[k], useMP=useMP))
+                #if Fk is a list
+                if Fk is not None:
+                    # use the standard distributions
+                    self.dissimDist.append(dissimDistribution(self.Xk[k], self.gammak[k], 1, self.ck[k], Fk[k], self.nISk[k], self.nBk[k], useMP=useMP))
+                else:
+                    # use the standard distributions
+                    self.dissimDist.append(dissimDistribution(self.Xk[k], self.gammak[k], 1, self.ck[k], None, self.nISk[k], self.nBk[k], useMP=useMP))
+        # retrieve the value of F for each class
+        self.Fk = np.array([self.dissimDist[k].F for k in range(self.K)])
         
     def getClassProbabilities(self, x):
         '''
@@ -609,7 +619,7 @@ class dissimClas:
             return [self.dissimDist[k].likelyhoodRatio(self.Xk[k]) for k in range(self.K)]
         else:
             # compute the likelihood ratio for the point
-            return [self.dissimDist[k].computeP(x[k]) for k in range(self.K)]
+            return [self.dissimDist[k].likelyhoodRatio(x[k]) for k in range(self.K)]
 
 def findOptimalCGamma(dataT, gam=0, cf=2, nIS=None, nB=None, useMP=False, returnDist=False, stepGamma=0.1, stepC=1, maxIter=10):
     '''
