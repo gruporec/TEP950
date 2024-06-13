@@ -18,15 +18,21 @@ from sklearn.svm import SVC
 from sklearn.tree import DecisionTreeClassifier
 
 from sklearn.metrics import confusion_matrix
-from sklearn.metrics import accuracy_score
+from sklearn.metrics import balanced_accuracy_score
 from sklearn.metrics import classification_report
+
+from sklearn.decomposition import PCA
 
 
 # ZIM data file in db/ZIMdb14151619Meteo.csv of root directory
 dataFile='db/ZIMdb14151619Meteo.csv'
 
+sufix="80ZIM4Meteo13PCA"
+doPCA=True
+n_components=13
+
 # Report file in results/ZIM/ of root directory, the name of the file is the name of the classifier
-reportFolder='results/ZIM/'
+reportFolder='results/ZIM/'+sufix+'/'
 
 # years to be used as training data
 year_train=['2014']
@@ -94,6 +100,32 @@ dbtrain.drop("Y", axis=1, inplace=True)
 if not os.path.exists(reportFolder):
     os.makedirs(reportFolder)
 
+if doPCA:
+    # create the PCA object
+    pca = PCA(n_components=n_components)
+    # fit the PCA object to the training data
+    pca.fit(dbtrain)
+    #store the training data indices
+    index_train=dbtrain.index
+    # transform the training data
+    dbtrain = pca.transform(dbtrain)
+    # add the index back to the training data
+    dbtrain=pd.DataFrame(dbtrain, index=index_train)
+    # remove the Y and year columns from the data, storing them temporarily
+    y = data["Y"]
+    year = data["year"]
+    data.drop(["Y", "year"], axis=1, inplace=True)
+    # also store the index of the data
+    index = data.index
+    # transform the remaining data
+    data = pca.transform(data)
+    # add the index back to the data
+    data = pd.DataFrame(data, index=index)
+    # add the Y and year columns back to the data
+    data["Y"] = y
+    data["year"] = year
+
+
 # train the classifiers
 for clf in classifiers:
     clf.fit(dbtrain, ytrain)
@@ -127,12 +159,12 @@ for clf in classifiers:
         reportString += "Normalized confusion matrix\n"
         reportString += str(confusion_matrix(ytest, ypred, normalize='true')) + "\n"
         reportString += "Accuracy\n"
-        reportString += str(accuracy_score(ytest, ypred)) + "\n"
+        reportString += str(balanced_accuracy_score(ytest, ypred)) + "\n"
         reportString += "Classification report\n"
         reportString += str(classification_report(ytest, ypred)) + "\n"
 
         # save the report to a file
-        reportFile = reportFolder + clf_labels[classifiers.index(clf)] + year + ".txt"
+        reportFile = reportFolder + clf_labels[classifiers.index(clf)] + year+sufix + ".txt"
         with open(reportFile, 'w') as f:
             f.write(reportString)
 
@@ -143,25 +175,25 @@ for clf in classifiers:
     reportString += "Normalized confusion matrix\n"
     reportString += str(confusion_matrix(ytestFull, ypredFull, normalize='true')) + "\n"
     reportString += "Accuracy\n"
-    reportString += str(accuracy_score(ytestFull, ypredFull)) + "\n"
+    reportString += str(balanced_accuracy_score(ytestFull, ypredFull)) + "\n"
     reportString += "Classification report\n"
     reportString += str(classification_report(ytestFull, ypredFull)) + "\n"
 
-    if accuracy_score(ytestFull, ypredFull)>bestacc:
-        bestacc=accuracy_score(ytestFull, ypredFull)
+    if balanced_accuracy_score(ytestFull, ypredFull)>bestacc:
+        bestacc=balanced_accuracy_score(ytestFull, ypredFull)
         bestclf=clf_labels[classifiers.index(clf)]
     
-    accs.append(accuracy_score(ytestFull, ypredFull))
+    accs.append(balanced_accuracy_score(ytestFull, ypredFull))
 
     # save the report to a file
-    reportFile = reportFolder + clf_labels[classifiers.index(clf)] + ".txt"
+    reportFile = reportFolder + clf_labels[classifiers.index(clf)] +sufix+ ".txt"
     with open(reportFile, 'w') as f:
         f.write(reportString)
     #print the classifier and the accuracy
-    print(clf_labels[classifiers.index(clf)], accuracy_score(ytestFull, ypredFull))
+    print(clf_labels[classifiers.index(clf)], balanced_accuracy_score(ytestFull, ypredFull))
 
 # save the accuracies to a file
-reportFile = reportFolder + "accuracies.csv"
+reportFile = reportFolder + "accuracies"+sufix+".csv"
 with open(reportFile, 'w') as f:
     f.write("Classifier, Accuracy\n")
     for i in range(len(accs)):
