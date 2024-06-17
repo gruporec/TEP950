@@ -35,6 +35,10 @@ sufix="80ZIM4Meteo13PCA"
 doPCA=True
 n_components=13
 
+sufix="80ZIM4Meteo13PCA"
+doPCA=True
+n_components=13
+
 # Report file in results/ZIM/ of root directory, the name of the file is the name of the classifier
 reportFolder='results/ZIM/'+sufix+'/'
 
