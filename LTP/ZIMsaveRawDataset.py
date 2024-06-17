@@ -60,8 +60,6 @@ for year_data in year_datas:
     # substitute the index with the columns Fecha and Hora
     ltpP = ltpP.set_index(['Fecha','Hora'])
 
-    print("ltpP")
-    print(ltpP)
     # valdata index as string
     valdatapd.index = valdatapd.index.strftime('%Y-%m-%d')
 
@@ -84,21 +82,25 @@ for year_data in year_datas:
 
     if meteodata:
         # separate the meteo data once again from ltpP as the index that doesn't start with LTP
-        meteoT = ltpP.loc[:,ltpP.columns.str.startswith('LTP')==False]
+        meteoT = ltpP.loc[ltpP.index.get_level_values(0).str.startswith('LTP')==False,:]
+        # separate the ltp data from ltpP as the index that starts with LTP
+        ltpP = ltpP.loc[ltpP.index.get_level_values(0).str.startswith('LTP')==True,:]
 
-        print("meteoT")
-        print(meteoT)
+        # add a column level to ltpP with the name 'LTP'
+        ltpP.columns = pd.MultiIndex.from_product([['LTP'],ltpP.columns])
 
-    print("ltpP")
-    print(ltpP)
-    print("valdatapd")
-    print(valdatapd)
-    sys.exit()
+        # unstack the first level of the index of meteoT
+        meteoT = meteoT.unstack(level=0)
+        # swap the levels of the columns of meteoT
+        meteoT = meteoT.swaplevel(axis=1)
+        # sort the columns of meteoT
+        meteoT = meteoT.sort_index(axis=1)
+
+        # merge meteo into ltp by the second level of the index in ltp and the only level of the index in meteoT
+        ltpP = ltpP.join(meteoT)
 
     # get the intersection index of valdatapd and ltpP
     valdatapd_ltp = valdatapd.index.intersection(ltpP.index)
-    print("valdatapd_ltp")
-    print(valdatapd_ltp)
 
     # remove the values of ltp that are not in valdatapd
     ltpv = ltpP.loc[valdatapd_ltp,:]
@@ -127,5 +129,7 @@ savedfX['Y']=savedfY-1
 
 # create a string with the last two digits of each year in year_datas
 year_datas_str = ''.join(year_datas[-2:] for year_datas in year_datas)
+if meteodata:
+    year_datas_str = year_datas_str + 'meteo'
 # store savedfX in a csv with a name composed of 'db' followed by the last two digits of each year in year_datas
 savedfX.to_csv('db'+year_datas_str+'raw.csv')
