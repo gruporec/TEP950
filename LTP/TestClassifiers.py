@@ -25,19 +25,11 @@ from sklearn.decomposition import PCA
 
 
 # ZIM data file in db/ZIMdb14151619Meteo.csv of root directory
-dataFile='db/ZIMdb14151619meteoraw.csv'
+dataFile='db/ZIMdb14151619raw.csv'
 
-sufix="meteoraw"
-doPCA=False
-n_components=13
-
-sufix="80ZIM4Meteo13PCA"
+sufix="raw15PCA"
 doPCA=True
-n_components=13
-
-sufix="80ZIM4Meteo13PCA"
-doPCA=True
-n_components=13
+n_components=15
 
 # Report file in results/ZIM/ of root directory, the name of the file is the name of the classifier
 reportFolder='results/ZIM/'+sufix+'/'

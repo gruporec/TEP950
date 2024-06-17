@@ -1,0 +1,22 @@
+Report for all years
+Confusion matrix
+[[1384  423   48]
+ [ 138  263   66]
+ [  14  120  144]]
+Normalized confusion matrix
+[[0.74609164 0.22803235 0.02587601]
+ [0.29550321 0.56316916 0.14132762]
+ [0.05035971 0.43165468 0.51798561]]
+Accuracy
+0.60908214019929
+Classification report
+              precision    recall  f1-score   support
+
+         0.0       0.90      0.75      0.82      1855
+         1.0       0.33      0.56      0.41       467
+         2.0       0.56      0.52      0.54       278
+
+    accuracy                           0.69      2600
+   macro avg       0.60      0.61      0.59      2600
+weighted avg       0.76      0.69      0.71      2600
+

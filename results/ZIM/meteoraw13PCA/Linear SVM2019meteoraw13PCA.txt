@@ -1,0 +1,22 @@
+Report for year 2019
+Confusion matrix
+[[388  29 270]
+ [ 11  17  75]
+ [  2   6 126]]
+Normalized confusion matrix
+[[0.56477438 0.04221252 0.3930131 ]
+ [0.10679612 0.16504854 0.72815534]
+ [0.01492537 0.04477612 0.94029851]]
+Accuracy
+0.5567071441734249
+Classification report
+              precision    recall  f1-score   support
+
+         0.0       0.97      0.56      0.71       687
+         1.0       0.33      0.17      0.22       103
+         2.0       0.27      0.94      0.42       134
+
+    accuracy                           0.57       924
+   macro avg       0.52      0.56      0.45       924
+weighted avg       0.79      0.57      0.62       924
+
