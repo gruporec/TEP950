@@ -24,8 +24,8 @@ from sklearn.metrics import classification_report
 from sklearn.decomposition import PCA
 
 # ZIM databases
-dataFiles=['db/ZIMdb14151619raw.csv', 'db/ZIMdb14151619Meteo.csv']
-dataLabels=['raw', '80ZIM4Meteo']
+dataFiles=['db/ZIMdb14151619raw.csv', 'db/ZIMdb14151619ZIM80MET4.csv','db/ZIMdb14151619ZIM15MET4.csv']
+dataLabels=['raw', '80ZIM4Meteo','15ZIM4Meteo']
 
 doPCAs=[False,True,True]
 ns_components=[0,13,15]

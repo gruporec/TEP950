@@ -12,7 +12,7 @@ import isadoralib as isl
 year_datas=["2014","2015","2016","2019"]
 sufix="rht"
 
-ltpitems=80
+ltpitems=15
 meteoitems=4
 
 #pd.set_option('display.max_rows', None)
@@ -31,9 +31,9 @@ for year_data in year_datas:
     # delete all NaN columns from ltp
     ltpP = ltpP.dropna(axis=1,how='all')
     # fill NaN values in ltp with the previous value
-    ltpP = ltpP.fillna(method='ffill')
+    ltpP = ltpP.ffill()
     # fill NaN values in ltp with the next value
-    ltpP = ltpP.fillna(method='bfill')
+    ltpP = ltpP.bfill()
 
     # apply a rolling mean filter to ltp
     ltpP = ltpP.rolling(window=240,center=True).mean()
@@ -49,8 +49,8 @@ for year_data in year_datas:
     ltp_stdP.index = pd.to_datetime(ltp_stdP.index)
 
     # resample ltp_medio and ltp_std to minutes
-    ltp_medioP = ltp_medioP.resample('T').pad()
-    ltp_stdP = ltp_stdP.resample('T').pad()
+    ltp_medioP = ltp_medioP.resample('min').ffill()
+    ltp_stdP = ltp_stdP.resample('min').ffill()
 
     # ltp normalized per day
     ltpP = (ltpP - ltp_medioP) / ltp_stdP
@@ -112,7 +112,7 @@ for year_data in year_datas:
     ltpP.index = [ltpP.index.strftime('%Y-%m-%d'),ltpP['Hora_norm']]
 
     # create the index of ltpPBase
-    ltpPBase['Hora_norm']=ltpPBase['Hora_norm'].apply(pd.to_timedelta,unit='H')
+    ltpPBase['Hora_norm']=ltpPBase['Hora_norm'].apply(pd.to_timedelta,unit='h')
     ltpPBase['dia_norm'] = ltpPBase.index.strftime('%Y-%m-%d')
     ltpPBase.index = [ltpPBase['dia_norm'].apply(pd.to_datetime,format='%Y-%m-%d'),ltpPBase['Hora_norm']]
     ltpPBase=ltpPBase.drop('Hora_norm',axis=1)
@@ -138,8 +138,9 @@ for year_data in year_datas:
     ltpv = ltpv.unstack(level=0)
 
     # create an index to adjust frequencies
-    ltpv_index_float=pd.Int64Index(np.floor(ltpv.index*1000000000))
-    meteoP_index_float=pd.Int64Index(np.floor(meteoP_norm.index*1000000000))
+    ltpv_index_float = pd.Index(np.floor(ltpv.index * 1000000000), dtype=np.int64)
+    meteoP_index_float = pd.Index(np.floor(meteoP_norm.index * 1000000000), dtype=np.int64)
+
 
     ltpv.index = pd.to_datetime(ltpv_index_float)
     meteoP_norm.index = pd.to_datetime(meteoP_index_float)
@@ -153,9 +154,9 @@ for year_data in year_datas:
     else:
         fmeteo=0
     # index as datetime to adjust frequencies
-    ltpv=ltpv_orig.resample(str(int(fltp*1000))+'L').mean()
+    ltpv=ltpv_orig.resample(str(int(fltp*1000))+'ms').mean()
     if meteoitems>0:
-        meteoP_norm=meteoP_norm_orig.resample(str(int(fmeteo*1000))+'L').mean()
+        meteoP_norm=meteoP_norm_orig.resample(str(int(fmeteo*1000))+'ms').mean()
 
     # keep values from 1970-01-01 00:00:06.000 to 1970-01-01 00:00:17.900 (data was converted as time from epoch; this will keep dailight time only)
     ltpv = ltpv.loc[ltpv.index>=pd.to_datetime('1970-01-01 00:00:06.000'),:]
@@ -239,5 +240,7 @@ savedfX['Y']=savedfY-1
 
 # create a string with the last two digits of each year in year_datas
 year_datas_str = ''.join(year_datas[-2:] for year_datas in year_datas)
+# add the number of ZIM items and METEO items to the string
+year_datas_str += 'ZIM'+str(ltpitems)+'MET'+str(meteoitems)
 # store savedfX in a csv with a name composed of 'db' followed by the last two digits of each year in year_datas
 savedfX.to_csv('db'+year_datas_str+'.csv')
