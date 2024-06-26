@@ -25,14 +25,14 @@ from sklearn.decomposition import PCA
 
 
 # ZIM data file in db/ZIMdb14151619Meteo.csv of root directory
-dataFile='db/ZIMdb14151619raw.csv'
+dataFile='db/TDVdb14151619Meteo.csv'
 
-sufix="raw15PCA"
-doPCA=True
-n_components=15
+sufix="Meteo"
+doPCA=False
+n_components=0
 
 # Report file in results/ZIM/ of root directory, the name of the file is the name of the classifier
-reportFolder='results/ZIM/'+sufix+'/'
+reportFolder='results/TDV/'+sufix+'/'
 
 # years to be used as training data
 year_train=['2014']

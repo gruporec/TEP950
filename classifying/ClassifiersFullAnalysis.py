@@ -23,17 +23,27 @@ from sklearn.metrics import classification_report
 
 from sklearn.decomposition import PCA
 
-# ZIM databases
-dataFiles=['db/ZIMdb14151619raw.csv', 'db/ZIMdb14151619ZIM80MET4.csv','db/ZIMdb14151619ZIM15MET4.csv']
-dataLabels=['raw', '80ZIM4Meteo','15ZIM4Meteo']
+# Databases
+#ZIM
+# dataFiles=['db/ZIMdb14151619raw.csv', 'db/ZIMdb14151619ZIM80MET4.csv','db/ZIMdb14151619ZIM15MET4.csv']
+# dataLabels=['raw', '80ZIM4Meteo','15ZIM4Meteo']
 
-doPCAs=[False,True,True]
-ns_components=[0,13,15]
+#TDV
+dataFiles=['db/TDVdb14151619.csv', 'db/TDVdb14151619Meteo.csv']
+dataLabels=['TDV','TDVMeteo']
+
+#ZIM
+# doPCAs=[False,True,True]
+# ns_components=[0,13,15]
+
+#TDV
+doPCAs=[False]
+ns_components=[0]
 
 verbose=True
 
 # Report file in results/ZIM/ of root directory, the name of the file is the name of the classifier
-reportFolder='results/ZIM/fullAnalysis/'
+reportFolder='results/TDV/fullAnalysis/'
 
 # years to be used as training data
 years_train=[['2014'], ['2015'], ['2016'], ['2019']]
@@ -104,7 +114,7 @@ for idata in range(len(dataFiles)):
             # best classifier
             bestclf=''
 
-            # Read ZIM data file. use the first two columns as index
+            # Read data file. use the first two columns as index
             data = pd.read_csv(dataFile, sep=',', decimal='.', index_col=[0,1])
 
             # # 'Fecha' (second index column) is a string with the format 'YYYY-MM-DD', convert it to datetime
