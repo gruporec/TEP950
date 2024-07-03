@@ -29,8 +29,8 @@ from sklearn.decomposition import PCA
 # dataLabels=['raw', '80ZIM4Meteo','15ZIM4Meteo']
 
 #TDV
-dataFiles=['db/TDVdb14151619.csv', 'db/TDVdb14151619Meteo.csv']
-dataLabels=['TDV','TDVMeteo']
+dataFiles=['db/TDVdb14151619.csv', 'db/TDVdb14151619Meteo.csv', 'db/TDVdb14151619raw.csv', 'db/TDVdb14151619meteoraw.csv']
+dataLabels=['TDV','TDVMeteo', 'TDVraw', 'TDVmeteoraw']
 
 #ZIM
 # doPCAs=[False,True,True]
@@ -46,7 +46,8 @@ verbose=True
 reportFolder='results/TDV/fullAnalysis/'
 
 # years to be used as training data
-years_train=[['2014'], ['2015'], ['2016'], ['2019']]
+#years_train=[['2014'], ['2015'], ['2016'], ['2019']]
+years_train=[['2014']]
 
 # classifiers to be used
 classifiers = [
@@ -116,6 +117,9 @@ for idata in range(len(dataFiles)):
 
             # Read data file. use the first two columns as index
             data = pd.read_csv(dataFile, sep=',', decimal='.', index_col=[0,1])
+
+            #remove nan rows
+            data=data.dropna()
 
             # # 'Fecha' (second index column) is a string with the format 'YYYY-MM-DD', convert it to datetime
             # data.index.set_levels(pd.to_datetime(data.index.levels[1]), level=1)

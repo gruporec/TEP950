@@ -2,7 +2,7 @@ import os
 import sys
 from fpdf import FPDF
 
-folders=["..\\ignore\\resultadosTDV\\batch\\GraficaMes\\2019"]
+folders=["C:\\Users\\jaime\\Desktop\\Trabajo\\ignore\\resultadosTDV\\graficasMes\\GraficaMes\\"]
 
 #define a function to scan the directory and return a list with the subdirectories
 def fast_scandir(dirname):

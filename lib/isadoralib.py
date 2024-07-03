@@ -35,7 +35,7 @@ def cargaDatos(year,sufix):
 def cargaDatosTDV(year,sufix):
     '''Load data corresponding to a year stored in the files [year][sufix].csv and validacion[year].csv and returns a tuple (tdv,ltp,meteo,hidric stress level).'''
     # Load data
-    df = pd.read_csv("rawMinutales"+year+sufix+".csv",na_values='.')
+    df = pd.read_csv("rawMinutales/rawMinutales"+year+sufix+".csv",na_values='.')
     df.loc[:,"Fecha"]=pd.to_datetime(df.loc[:,"Fecha"])# Date as datetime
     df=df.drop_duplicates(subset="Fecha")
     df.dropna(subset = ["Fecha"], inplace=True)
@@ -49,7 +49,7 @@ def cargaDatosTDV(year,sufix):
     meteo = meteo.drop(meteo.columns[meteo.columns.str.startswith('LTP')], axis=1)
 
     # Load validation data
-    valdatapd=pd.read_csv("validacion"+year+"TDV.csv")
+    valdatapd=pd.read_csv("validacion/validacion"+year+"TDV.csv")
     #valdatapd.dropna(inplace=True)
     valdatapd['Fecha'] = pd.to_datetime(valdatapd['Fecha'])
     valdatapd.set_index('Fecha',inplace=True)
