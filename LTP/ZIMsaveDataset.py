@@ -12,8 +12,8 @@ import isadoralib as isl
 year_datas=["2014","2015","2016","2019"]
 sufix="rht"
 
-ltpitems=15
-meteoitems=4
+ltpitems=40
+meteoitems=0
 
 #pd.set_option('display.max_rows', None)
 
@@ -243,4 +243,4 @@ year_datas_str = ''.join(year_datas[-2:] for year_datas in year_datas)
 # add the number of ZIM items and METEO items to the string
 year_datas_str += 'ZIM'+str(ltpitems)+'MET'+str(meteoitems)
 # store savedfX in a csv with a name composed of 'db' followed by the last two digits of each year in year_datas
-savedfX.to_csv('db'+year_datas_str+'.csv')
+savedfX.to_csv('db\ZIMdb'+year_datas_str+'.csv')

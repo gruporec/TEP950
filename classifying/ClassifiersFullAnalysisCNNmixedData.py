@@ -72,8 +72,10 @@ class CNNHypermodel(kt.HyperModel):
 
 # Databases
 #ZIM ['db/ZIMdb14151619raw.csv','db/ZIMdb14151619ZIM80MET4.csv','db/ZIMdb14151619ZIM15MET4.csv']['raw','80ZIM4Meteo','15ZIM4Meteo']
+#dataFiles=['db/ZIMdb14151619ZIM40MET0.csv','db/ZIMdb14151619ZIM80MET0.csv','db/ZIMdb14151619ZIM120MET0.csv','db/ZIMdb14151619ZIM40MET4.csv','db/ZIMdb14151619ZIM80MET4.csv','db/ZIMdb14151619ZIM120MET4.csv','db/ZIMdb14151619ZIM40MET8.csv','db/ZIMdb14151619ZIM80MET8.csv','db/ZIMdb14151619ZIM120MET8.csv']
+#dataLabels=['40Z0M','80Z0M','120Z0M','40Z4M','80Z4M','120Z4M','40Z8M','80Z8M','120Z8M']
 dataFiles=['db/ZIMdb14151619meteoraw.csv']
-dataLabels=['meteoraw']
+dataLabels=['ZIMmeteoraw']
 
 #TDV
 # dataFiles=['db/TDVdb14151619raw.csv', 'db/TDVdb14151619meteoraw.csv']
@@ -97,21 +99,21 @@ ns_components=[0]
 verbose=True
 
 # Report file in results/ZIM/ of root directory, the name of the file is the name of the classifier
-reportFolder='results/ZIM/AnalisysMixedUnbalanced-KNN-LDA-lSVM-RF-CNN-meteoraw/'
+reportFolder='results/ZIM/AnalisysMixedBalanced0369/'
 
 # years to be used as training data
 #years_train=[['2014'], ['2015'], ['2016'], ['2019']]
 train_frac = 0.25
 val_frac = 0.25
-valancedTrain = False
-valancedVal = False
+valancedTrain = True
+valancedVal = True
 
 #fix random seed
 np.random.seed(42)
 
 # classifiers to be used
 classifiers = [
-    "CNN",
+    #"CNN",
     LinearDiscriminantAnalysis(),
     KNeighborsClassifier(3),
     SVC(kernel="linear", C=0.025, random_state=42),
@@ -127,7 +129,7 @@ classifiers = [
 
 # classifier labels
 clf_labels = [
-    "CNN",
+    #"CNN",
     "LDA",
     "Nearest Neighbors",
     "Linear SVM",
