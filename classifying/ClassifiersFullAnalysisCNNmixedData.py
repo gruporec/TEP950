@@ -83,7 +83,7 @@ dataLabels=['ZIMmeteoraw']
 # dataLabels=['TDVraw', 'TDVmeteoraw']
 
 # N days of previous data
-ndays=[0,3,6,9]
+ndays=[0]
 
 # test on all years or only on test years
 testonall=False
@@ -99,21 +99,21 @@ ns_components=[0]
 verbose=True
 
 # Report file in results/ZIM/ of root directory, the name of the file is the name of the classifier
-reportFolder='results/ZIM/AnalisysMixedBalanced0369/'
+reportFolder='results/ZIM/AnalisysRawMixedUnbalanced0/'
 
 # years to be used as training data
 #years_train=[['2014'], ['2015'], ['2016'], ['2019']]
 train_frac = 0.25
 val_frac = 0.25
-valancedTrain = True
-valancedVal = True
+balancedTrain = False
+balancedVal = False
 
 #fix random seed
 np.random.seed(42)
 
 # classifiers to be used
 classifiers = [
-    #"CNN",
+    "CNN",
     LinearDiscriminantAnalysis(),
     KNeighborsClassifier(3),
     SVC(kernel="linear", C=0.025, random_state=42),
@@ -129,7 +129,7 @@ classifiers = [
 
 # classifier labels
 clf_labels = [
-    #"CNN",
+    "CNN",
     "LDA",
     "Nearest Neighbors",
     "Linear SVM",
@@ -229,7 +229,7 @@ for idata in range(len(dataFiles)):
             db1=dbTest.loc[dbTest["Y"]==1]
             db2=dbTest.loc[dbTest["Y"]==2]
 
-            if valancedTrain:
+            if balancedTrain:
                 # calculate the number of training samples for each class as the fraction from the smallest class
                 n0 = int(db0.shape[0]*train_frac)
                 n1 = int(db1.shape[0]*train_frac)
@@ -255,7 +255,7 @@ for idata in range(len(dataFiles)):
             db2=dbTest.loc[dbTest["Y"]==2]
 
             # calculate the number of validating samples for each class as the fraction from the smallest class
-            if valancedVal:
+            if balancedVal:
                 n0 = int(db0.shape[0]*val_frac)
                 n1 = int(db1.shape[0]*val_frac)
                 n2 = int(db2.shape[0]*val_frac)
