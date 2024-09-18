@@ -95,9 +95,10 @@ doPCAs=[False]
 ns_components=[0]
 
 verbose=True
+confmat=True
 
 # Report file in results/ZIM/ of root directory, the name of the file is the name of the classifier
-reportFolder='results/ZIM/Analisys-KNN-LDA-lSVM-RF-CNN-HC/'
+reportFolder='results/ZIM/Analisys-KNN-LDA-lSVM-RF-CNN-HC-confmat/'
 
 # years to be used as training data
 #years_train=[['2014'], ['2015'], ['2016'], ['2019']]
@@ -325,6 +326,13 @@ for idata in range(len(dataFiles)):
                             # if it's set to use all years as test data or the year isn't on the training data, save the y values and the predicted y values
                             ytestFull.extend(ytest)
                             ypredFull.extend(ypred)
+
+                            # calculate the confusion matrix
+                            if confmat:
+                                cm = confusion_matrix(ytest, ypred)
+
+                                # save the confusion matrix to a csv file
+                                pd.DataFrame(cm).to_csv(reportFolder+"confusion_matrix_"+dataLabel+"_"+str(year)+"_"+clf_labels[classifiers.index(clf)]+".csv")
                             
 
                             # show the predicted values and the real values
