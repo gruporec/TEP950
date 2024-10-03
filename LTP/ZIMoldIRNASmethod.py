@@ -280,6 +280,9 @@ for year_data in year_datas:
 savedfX = savedfX.swaplevel()
 savedfY = savedfY.swaplevel()
 
+#substract the minimum value of Y from all values of Y
+savedfY["Y"] = savedfY["Y"] - savedfY["Y"].min()
+
 # add Y to X as a column
 savedfX["Y"] = savedfY["Y"]
 

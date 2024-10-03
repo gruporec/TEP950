@@ -74,8 +74,8 @@ class CNNHypermodel(kt.HyperModel):
 #ZIM ['db/ZIMdb14151619raw.csv','db/ZIMdb14151619ZIM80MET4.csv','db/ZIMdb14151619ZIM15MET4.csv']['raw','80ZIM4Meteo','15ZIM4Meteo']
 #dataFiles=['db/ZIMdb14151619ZIM40MET0.csv','db/ZIMdb14151619ZIM80MET0.csv','db/ZIMdb14151619ZIM120MET0.csv','db/ZIMdb14151619ZIM40MET4.csv','db/ZIMdb14151619ZIM80MET4.csv','db/ZIMdb14151619ZIM120MET4.csv','db/ZIMdb14151619ZIM40MET8.csv','db/ZIMdb14151619ZIM80MET8.csv','db/ZIMdb14151619ZIM120MET8.csv']
 #dataLabels=['40Z0M','80Z0M','120Z0M','40Z4M','80Z4M','120Z4M','40Z8M','80Z8M','120Z8M']
-dataFiles=['db/ZIMdb14151619meteoraw.csv']
-dataLabels=['ZIMmeteoraw']
+dataFiles=['db/ZIMdb14151619oldIRNAS.csv']
+dataLabels=['ZIMindicators']
 
 #TDV
 # dataFiles=['db/TDVdb14151619raw.csv', 'db/TDVdb14151619meteoraw.csv']
@@ -99,13 +99,13 @@ ns_components=[0]
 verbose=True
 
 # Report file in results/ZIM/ of root directory, the name of the file is the name of the classifier
-reportFolder='results/ZIM/AnalisysRawMixedUnbalanced0/'
+reportFolder='results/ZIM/AnalisysOldIRNAS/'
 
 # years to be used as training data
 #years_train=[['2014'], ['2015'], ['2016'], ['2019']]
-train_frac = 0.25
-val_frac = 0.25
-balancedTrain = False
+train_frac = 0.75
+val_frac = 0
+balancedTrain = True
 balancedVal = False
 
 #fix random seed
@@ -113,14 +113,14 @@ np.random.seed(42)
 
 # classifiers to be used
 classifiers = [
-    "CNN",
-    LinearDiscriminantAnalysis(),
-    KNeighborsClassifier(3),
-    SVC(kernel="linear", C=0.025, random_state=42),
+    #"CNN",
+    #LinearDiscriminantAnalysis(),
+    #KNeighborsClassifier(3),
+    #SVC(kernel="linear", C=0.025, random_state=42),
     # SVC(gamma=2, C=1, random_state=42),
     # GaussianProcessClassifier(1.0 * RBF(1.0), random_state=42),
     # DecisionTreeClassifier(max_depth=5, random_state=42),
-    RandomForestClassifier(max_depth=5, n_estimators=1000, max_features=1, random_state=42),
+    RandomForestClassifier(n_estimators=1000, random_state=42),
     # MLPClassifier(alpha=1, max_iter=1000, random_state=42),
     # AdaBoostClassifier(algorithm="SAMME", random_state=42),
     # GaussianNB(),
@@ -129,10 +129,10 @@ classifiers = [
 
 # classifier labels
 clf_labels = [
-    "CNN",
-    "LDA",
-    "Nearest Neighbors",
-    "Linear SVM",
+    # "CNN",
+    # "LDA",
+    # "Nearest Neighbors",
+    # "Linear SVM",
     # "RBF SVM",
     # "Gaussian Process",
     # "Decision Tree",
@@ -370,7 +370,9 @@ for idata in range(len(dataFiles)):
 
                 # show the predicted values and the real values
                 if verbose:
-                    print("Real values: ", ytest)
+                    #convert the real values from dataframe to list
+                    ytestl=ytest.tolist()
+                    print("Real values: ", ytestl)
                     print("Predicted values: ", ypred)
                     print()
                     
@@ -378,6 +380,9 @@ for idata in range(len(dataFiles)):
                 curracc=balanced_accuracy_score(ytestFull, ypredFull)
 
                 if verbose:
+                    cm = confusion_matrix(ytestFull, ypredFull)
+                    print("Confusion matrix: ")
+                    print(cm)
                     print("Balanced accuracy: ", curracc)
                     print()
 
