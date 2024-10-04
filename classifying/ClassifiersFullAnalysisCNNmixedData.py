@@ -103,9 +103,9 @@ reportFolder='results/ZIM/AnalisysOldIRNAS/'
 
 # years to be used as training data
 #years_train=[['2014'], ['2015'], ['2016'], ['2019']]
-train_frac = 0.75
-val_frac = 0
-balancedTrain = True
+train_frac = 0.25
+val_frac = 0.25
+balancedTrain = False
 balancedVal = False
 
 #fix random seed
@@ -113,10 +113,10 @@ np.random.seed(42)
 
 # classifiers to be used
 classifiers = [
-    #"CNN",
-    #LinearDiscriminantAnalysis(),
-    #KNeighborsClassifier(3),
-    #SVC(kernel="linear", C=0.025, random_state=42),
+    "CNN",
+    LinearDiscriminantAnalysis(),
+    KNeighborsClassifier(3),
+    SVC(kernel="linear", C=0.025, random_state=42),
     # SVC(gamma=2, C=1, random_state=42),
     # GaussianProcessClassifier(1.0 * RBF(1.0), random_state=42),
     # DecisionTreeClassifier(max_depth=5, random_state=42),
@@ -129,10 +129,10 @@ classifiers = [
 
 # classifier labels
 clf_labels = [
-    # "CNN",
-    # "LDA",
-    # "Nearest Neighbors",
-    # "Linear SVM",
+    "CNN",
+    "LDA",
+    "Nearest Neighbors",
+    "Linear SVM",
     # "RBF SVM",
     # "Gaussian Process",
     # "Decision Tree",
