@@ -72,9 +72,10 @@ class CNNHypermodel(kt.HyperModel):
 
 # Databases
 #ZIM 'raw','db/ZIMdb14151619raw.csv',
-dataFiles=['db/ZIMdb14151619ZIM40MET0.csv','db/ZIMdb14151619ZIM80MET0.csv','db/ZIMdb14151619ZIM120MET0.csv','db/ZIMdb14151619ZIM40MET4.csv','db/ZIMdb14151619ZIM80MET4.csv','db/ZIMdb14151619ZIM120MET4.csv','db/ZIMdb14151619ZIM40MET8.csv','db/ZIMdb14151619ZIM80MET8.csv','db/ZIMdb14151619ZIM120MET8.csv']
-dataLabels=['40Z0M','80Z0M','120Z0M','40Z4M','80Z4M','120Z4M','40Z8M','80Z8M','120Z8M']
-
+# dataFiles=['db/ZIMdb14151619ZIM40MET0.csv','db/ZIMdb14151619ZIM80MET0.csv','db/ZIMdb14151619ZIM120MET0.csv','db/ZIMdb14151619ZIM40MET4.csv','db/ZIMdb14151619ZIM80MET4.csv','db/ZIMdb14151619ZIM120MET4.csv','db/ZIMdb14151619ZIM40MET8.csv','db/ZIMdb14151619ZIM80MET8.csv','db/ZIMdb14151619ZIM120MET8.csv']
+# dataLabels=['40Z0M','80Z0M','120Z0M','40Z4M','80Z4M','120Z4M','40Z8M','80Z8M','120Z8M']
+dataFiles=['db/ZIMdb14151619oldIRNAS.csv']
+dataLabels=['ZIMindicators']
 #TDV
 # dataFiles=['db/TDVdb14151619raw.csv', 'db/TDVdb14151619meteoraw.csv']
 # #dataFiles=['db/TDVdb14151619meteoraw.csv']
@@ -98,7 +99,7 @@ verbose=True
 confmat=True
 
 # Report file in results/ZIM/ of root directory, the name of the file is the name of the classifier
-reportFolder='results/ZIM/Analisys-KNN-LDA-lSVM-RF-CNN-HC-confmat/'
+reportFolder='results/ZIM/AnalisysOldIRNAS2/'
 
 # years to be used as training data
 #years_train=[['2014'], ['2015'], ['2016'], ['2019']]
@@ -114,7 +115,7 @@ classifiers = [
     # SVC(gamma=2, C=1, random_state=42),
     # GaussianProcessClassifier(1.0 * RBF(1.0), random_state=42),
     # DecisionTreeClassifier(max_depth=5, random_state=42),
-    RandomForestClassifier(max_depth=5, n_estimators=1000, max_features=1, random_state=42),
+    RandomForestClassifier(n_estimators=1000, random_state=42),
     # MLPClassifier(alpha=1, max_iter=1000, random_state=42),
     # AdaBoostClassifier(algorithm="SAMME", random_state=42),
     # GaussianNB(),
@@ -346,6 +347,9 @@ for idata in range(len(dataFiles)):
                     curracc=balanced_accuracy_score(ytestFull, ypredFull)
 
                     if verbose:
+                        cmfull = confusion_matrix(ytestFull, ypredFull)
+                        print("confusion matrix: ")
+                        print(cmfull)
                         print("Balanced accuracy: ", curracc)
                         print()
 
