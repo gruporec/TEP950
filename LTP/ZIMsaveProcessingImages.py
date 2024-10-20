@@ -28,6 +28,10 @@ meteoitems=4
 savedfX = pd.DataFrame()
 savedfY = pd.DataFrame()
 
+#create blank dataframes for the plots
+ZIMplots = pd.DataFrame()
+MeteoPlots = pd.DataFrame()
+
 # Load prediction data
 tdvP,ltpP,meteoP,valdatapd=isl.cargaDatos(year_data,sufix)
 
@@ -48,8 +52,22 @@ ltpP=ltpP.loc[:,ltpP.columns.str.startswith(sensor)]
 
 #merge ltpP and meteoP for plotting
 plotData = pd.merge(ltpP,meteoP,how='outer',left_index=True,right_index=True)
-# plot ltpP and meteoP data
-plotData.plot(subplots=True)
+
+# rename the column with the sensor name to ZIM measurements
+plotData = plotData.rename(columns={sensor: 'ZIM measurements'})
+# rename T_Amb_Avg to Ambient Temperature
+plotData = plotData.rename(columns={'T_Amb_Avg': 'Ambient Temperature'})
+# rename R_Neta_Avg to Net Radiation
+plotData = plotData.rename(columns={'R_Neta_Avg': 'Net Radiation'})
+# rename H_Relat_Avg to Relative Humidity
+plotData = plotData.rename(columns={'H_Relat_Avg': 'Relative Humidity'})
+# rename VPD_Avg to Vapor Pressure Deficit
+plotData = plotData.rename(columns={'VPD_Avg': 'Vapor Pressure Deficit'})
+
+# Add the ZIM measurements to the plot dataframe as "raw data"
+ZIMplots['raw'] = plotData['ZIM measurements']
+# Add the ambient temperature to the plot dataframe as "raw data"
+MeteoPlots['raw'] = plotData['Ambient Temperature']
 
 # add meteo to ltpP
 ltpP=ltpP.join(meteoP)
@@ -61,31 +79,59 @@ ltpP = ltpP.fillna(method='ffill')
 # fill NaN values in ltp with the next value
 ltpP = ltpP.fillna(method='bfill')
 
-# apply a rolling mean filter to ltp
-ltpP = ltpP.rolling(window=240,center=True).mean()
+print(ltpP)
 
-# get the mean value of ltp for each day
-ltp_medioP = ltpP.groupby(ltpP.index.date).mean()
+# apply a rolling mean filter to ltp
+ltpP_mf = ltpP.rolling(window=240,center=True).mean()
+
+# # where there is no data in ltpP_mf, use the original data
+# ltpP_mf = ltpP_mf.fillna(ltpP)
+
+#store the data in ltpP
+ltpP = ltpP_mf
+
+print(ltpP)
+
+# rename the columns of ltpP as we did before with plotData
+ltpP = ltpP.rename(columns={sensor: 'ZIM measurements'})
+ltpP = ltpP.rename(columns={'T_Amb_Avg': 'Ambient Temperature'})
+ltpP = ltpP.rename(columns={'R_Neta_Avg': 'Net Radiation'})
+ltpP = ltpP.rename(columns={'H_Relat_Avg': 'Relative Humidity'})
+ltpP = ltpP.rename(columns={'VPD_Avg': 'Vapor Pressure Deficit'})
+
+# Add the ZIM measurements to the plot dataframe as "filtered data"
+ZIMplots['filtered'] = ltpP['ZIM measurements']
+# Add the ambient temperature to the plot dataframe as "filtered data"
+MeteoPlots['filtered'] = ltpP['Ambient Temperature']
+
+#get the zim measurements column
+ltpP_zim = ltpP['ZIM measurements']
+
+# get the mean value of the zim measurements
+ltp_medioP = ltpP_zim.groupby(ltpP_zim.index.date).mean()
 
 # get the standard deviation of ltp for each day
-ltp_stdP = ltpP.groupby(ltpP.index.date).std()
+ltp_stdP = ltpP_zim.groupby(ltpP_zim.index.date).std()
 
-# change the index to datetime
-ltp_medioP.index = pd.to_datetime(ltp_medioP.index)
-ltp_stdP.index = pd.to_datetime(ltp_stdP.index)
+#get the only value of ltp_medioP as a scalar
+ltp_medioP = ltp_medioP.iloc[0]
+ltp_stdP = ltp_stdP.iloc[0]
 
-# resample ltp_medio and ltp_std to minutes
-ltp_medioP = ltp_medioP.resample('T')
-ltp_stdP = ltp_stdP.resample('T')
+print(ltpP)
+print(ltp_medioP)
+print(ltp_stdP)
 
-# plot ltpP
+# ltp normalized per day (only zim measurements)
+ltpP_zim_norm = (ltpP_zim-ltp_medioP)/ltp_stdP
+
+# save the normalized zim measurements in ltpP
+ltpP['ZIM measurements'] = ltpP_zim_norm
+
+# plot ltpP normalized
 ltpP.plot(subplots=True)
-plt.show()
 
-sys.exit()
-
-# ltp normalized per day
-ltpP = (ltpP - ltp_medioP) / ltp_stdP
+# add the normalized zim measurements to the plot dataframe
+ZIMplots['normalized'] = ltpP['ZIM measurements']
 
 # get every sign change of R_Neta_Avg in meteo
 signosP = np.sign(meteoP.loc[:,meteoP.columns.str.startswith('R_Neta_Avg')]).diff()
@@ -135,133 +181,111 @@ ltpP.loc[:,'Hora_norm'] = ltpP.loc[:,'Hora_norm'].interpolate()
 # store the values before cropping
 ltpPBase=ltpP
 
+ltpP_wo_hn = ltpP.drop('Hora_norm',axis=1)
+
+# plot ltpP without Hora_norm
+ltpP_wo_hn.plot(subplots=True)
+
+# get the hour at which hora_norm is 6
+ltpP_6 = ltpP.loc[ltpP['Hora_norm']==6,:]
+# get the hour at which hora_norm is 18
+ltpP_18 = ltpP.loc[ltpP['Hora_norm']==18,:]
+
+# add to the plot a vertical line at the hour where hora_norm is 6 in every subplot
+for ax in plt.gcf().get_axes():
+    ax.axvline(x=ltpP_6.index[0],color='gray')
+# add to the plot a vertical line at the hour where hora_norm is 18 in every subplot
+for ax in plt.gcf().get_axes():
+    ax.axvline(x=ltpP_18.index[0],color='gray')
+
 # crop ltp to the 6 to 18 time range of hora_norm
 ltpP = ltpP.loc[ltpP['Hora_norm']>=6,:]
 ltpP = ltpP.loc[ltpP['Hora_norm']<=18,:]
 
+print(ltpP)
 
-# add the normalized time to the index of ltp
-ltpP.index = [ltpP.index.strftime('%Y-%m-%d'),ltpP['Hora_norm']]
+# add an copy of the normalized zim measurements to do a plot with night hours marked
+ZIMplots['night'] = ZIMplots['normalized']
+MeteoPlots['night'] = MeteoPlots['filtered']
 
-# create the index of ltpPBase
-ltpPBase['Hora_norm']=ltpPBase['Hora_norm'].apply(pd.to_timedelta,unit='H')
-ltpPBase['dia_norm'] = ltpPBase.index.strftime('%Y-%m-%d')
-ltpPBase.index = [ltpPBase['dia_norm'].apply(pd.to_datetime,format='%Y-%m-%d'),ltpPBase['Hora_norm']]
-ltpPBase=ltpPBase.drop('Hora_norm',axis=1)
-ltpPBase=ltpPBase.drop('dia_norm',axis=1)
-ltpPBase=ltpPBase.unstack(level=0)
+# drop the hora_norm column
+ltpP = ltpP.drop('Hora_norm',axis=1)
 
-valdatapd.index = valdatapd.index.strftime('%Y-%m-%d')
+#separate the zim columns from the meteo columns
+ltpP_zim = ltpP['ZIM measurements']
+ltpP_meteo = ltpP.drop('ZIM measurements',axis=1)
 
-# get the intersection index of valdatapd and the first level of the ltp index
-ltpPdates = ltpP.index.get_level_values(0)
-valdatapd_ltp = valdatapd.index.intersection(ltpPdates)
+# take group the zim data in 16 groups with the same number of elements and get the mean of each group
+ltpP_zim_grouped = ltpP_zim.groupby(pd.qcut(ltpP_zim.index,16)).mean()
 
-# split meteo from ltp again
-meteoP_norm=ltpP.drop(ltpP.columns[ltpP.columns.str.startswith('LTP')], axis=1)
-
-# remove the values of ltp that are not in valdatapd
-ltpv = ltpP.loc[valdatapd_ltp,valdatapd.columns]
-
-# unstack meteoP_norm
-meteoP_norm = meteoP_norm.unstack(level=0)
-
-# unstack ltpv
-ltpv = ltpv.unstack(level=0)
-
-# create an index to adjust frequencies
-ltpv_index_float=pd.Int64Index(np.floor(ltpv.index*1000000000))
-meteoP_index_float=pd.Int64Index(np.floor(meteoP_norm.index*1000000000))
-
-ltpv.index = pd.to_datetime(ltpv_index_float)
-meteoP_norm.index = pd.to_datetime(meteoP_index_float)
-
-ltpv_orig=ltpv.copy()
-meteoP_norm_orig=meteoP_norm.copy()
-
-fltp=12/ltpitems
-if meteoitems>0:
-    fmeteo=12/meteoitems
-else:
-    fmeteo=0
-# index as datetime to adjust frequencies
-ltpv=ltpv_orig.resample(str(int(fltp*1000))+'L').mean()
-if meteoitems>0:
-    meteoP_norm=meteoP_norm_orig.resample(str(int(fmeteo*1000))+'L').mean()
-
-# keep values from 1970-01-01 00:00:06.000 to 1970-01-01 00:00:17.900 (data was converted as time from epoch; this will keep dailight time only)
-ltpv = ltpv.loc[ltpv.index>=pd.to_datetime('1970-01-01 00:00:06.000'),:]
-ltpv = ltpv.loc[ltpv.index<=pd.to_datetime('1970-01-01 00:00:17.900'),:]
-
-if meteoitems>0:
-    meteoP_norm = meteoP_norm.loc[meteoP_norm.index>=pd.to_datetime('1970-01-01 00:00:06.000'),:]
-    meteoP_norm = meteoP_norm.loc[meteoP_norm.index<=pd.to_datetime('1970-01-01 00:00:17.900'),:]
+# take group the meteo data in 4 groups with the same number of elements and get the mean of each group
+ltpP_meteo_grouped = ltpP_meteo.groupby(pd.qcut(ltpP_meteo.index,4)).mean()
 
 
-# create a series to restore the index
-norm_index=pd.Series(np.arange(6,18,fltp))
-# adjust the index of ltpv to the series
-ltpv.index=norm_index
+# change the index of the grouped data to the mean of the group
+ltpP_zim_grouped.index = ltpP_zim_grouped.index.map(lambda x: x.mid)
+ltpP_meteo_grouped.index = ltpP_meteo_grouped.index.map(lambda x: x.mid)
 
-if meteoitems>0:
-    # create a series to restore the index
-    norm_index=pd.Series(np.arange(6,18,fmeteo))
-    # crop norm_index to match the size of meteoP_norm if there has been a mismatch when calculating the dataframe
-    norm_index=norm_index.loc[norm_index.index<len(meteoP_norm)]
-    # adjust the index of meteoP_norm to the series
-    meteoP_norm.index=norm_index
+#print the grouped data
+print(ltpP_zim_grouped)
+print(ltpP_meteo_grouped)
 
-    # drop the Hora_norm column from meteo
-    meteoP_norm = meteoP_norm.drop('Hora_norm',axis=1)
+# convert the index of the grouped data to a datetime object
+ltpP_zim_grouped.index = pd.to_datetime(ltpP_zim_grouped.index)
+ltpP_meteo_grouped.index = pd.to_datetime(ltpP_meteo_grouped.index)
 
-    # stack meteoP_norm
-    meteoP_norm = meteoP_norm.stack(level=0)
-
-    # swap the levels of the index of meteo
-    meteoP_norm.index = meteoP_norm.index.swaplevel(0,1)
-
-    meteoP_norm=meteoP_norm.dropna(axis=1,how='all')
-
-    # merge the two levels of the index of meteo
-    meteoP_norm.index = meteoP_norm.index.map('{0[1]}/{0[0]}'.format)
-
-else:
-    meteoP_norm = pd.DataFrame()
-
-# create an empty numpy array
-array_ltpv=np.empty((len(ltpv)+len(meteoP_norm),0))
-
-# for each element in the first column index of ltp
-for i in ltpv.columns.levels[0]:
-    ltpv_col=ltpv.loc[:,i]
-    if meteoitems>0:
-        # remove the values of meteo that are not in ltp_col
-        meteo_ltp = ltpv_col.columns.intersection(meteoP_norm.columns)
-        meteoP_col = meteoP_norm.loc[:,meteo_ltp]
-
-        # merge ltpv with meteo
-        merge_ltp_meteo = pd.merge(ltpv.loc[:,i],meteoP_col,how='outer')
-    else:
-        merge_ltp_meteo = ltpv.loc[:,i]
-    # add the resulting dataframe to the numpy array
-    array_ltpv=np.append(array_ltpv,merge_ltp_meteo.values,axis=1)
+# plot the grouped data
+ltpP_zim_grouped.plot()
+ltpP_meteo_grouped.plot(subplots=True)
+# get only the data from temperature
+ltpP_meteo_grouped_temp = ltpP_meteo_grouped['Ambient Temperature']
 
 
-# print("ltpt")
-# print(ltpt)
-# print("meteo_ltp")
-# print(meteo_ltp)
-# print("meteoT_norm")
-# print(meteoT_norm)
-# print("ltpt_col")
-# print(ltpt_col)
+#create a figure with 6 subplots
+plt.figure()
+ax = plt.gcf().add_subplot(511)
+# plot the raw data
+ZIMplots['raw'].plot(ax=ax)
+ax = plt.gcf().add_subplot(512)
+# plot the filtered data
+ZIMplots['filtered'].plot(ax=ax)
+ax = plt.gcf().add_subplot(513)
+# plot the normalized data
+ZIMplots['normalized'].plot(ax=ax)
+ax = plt.gcf().add_subplot(514)
+# plot the data with night hours marked
+ZIMplots['night'].plot(ax=ax)
+# place a vertical line at the hour where hora_norm is 6
+ax.axvline(x=ltpP_6.index[0],color='gray')
+# place a vertical line at the hour where hora_norm is 18
+ax.axvline(x=ltpP_18.index[0],color='gray')
 
-Xv=array_ltpv.transpose()
-Yv=valdatapd.unstack()
+ax = plt.gcf().add_subplot(515)
+# plot the grouped zim data
+ltpP_zim_grouped.plot(ax=ax)
 
-# Xv as dataframe with the index of Yv
-Xv=pd.DataFrame(Xv,index=Yv.index)
+plt.figure()
+ax = plt.gcf().add_subplot(411)
 
-# add Xv and Yv to their respective dataframes
-savedfX=pd.concat([savedfX,Xv])
-savedfY=pd.concat([savedfY,Yv])
+# plot the raw data
+MeteoPlots['raw'].plot(ax=ax)
+ax = plt.gcf().add_subplot(412)
+# plot the filtered data
+MeteoPlots['filtered'].plot(ax=ax)
+ax = plt.gcf().add_subplot(413)
+# plot the data with night hours marked
+MeteoPlots['night'].plot(ax=ax)
+# place a vertical line at the hour where hora_norm is 6
+ax.axvline(x=ltpP_6.index[0],color='gray')
+# place a vertical line at the hour where hora_norm is 18
+ax.axvline(x=ltpP_18.index[0],color='gray')
+
+# add another ax to the plot
+ax = plt.gcf().add_subplot(414)
+# plot the grouped meteo data
+ltpP_meteo_grouped_temp.plot(ax=ax)
+
+
+plt.show()
+
+sys.exit()
