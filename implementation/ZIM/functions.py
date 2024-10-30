@@ -4,8 +4,6 @@ from sklearn.svm import SVC
 
 '''Contains functions for ZIM and meteo data processing'''
 
-
-
 def trainClassifier(data:np.ndarray, target:np.ndarray) -> SVC:
     '''Train a classifier using the data and target values
     
@@ -141,6 +139,61 @@ def processRawZIMData(data:pd.DataFrame,sunriseTime:np.ndarray,sunsetTime:np.nda
 
     # Normalize the data by subtracting the mean and dividing by the standard deviation
     data = (data - data.mean(axis=1)[:, np.newaxis]) / data.std(axis=1)[:, np.newaxis]
+
+    # Create an empty array to store the processed data, with size (nsamples, nfeatures)
+    processed_data = np.zeros((nsamples, data.shape[1]))
+
+    # Generate the samples for each day
+    for i in range(data.shape[0]):
+        # Get the sunrise and sunset times for the current day
+        sunrise = sunriseTime[i]
+        sunset = sunsetTime[i]
+
+        # crop the data to the sunrise-sunset window
+        cropped_data = data.iloc[i, sunrise:sunset]
+
+        # interpolate the cropped data to as many samples as needed (nsamples) using the average method
+        interpolated_data = cropped_data.resample(f"{int((sunset - sunrise) / nsamples)}T").mean()
+
+        # fill the processed_data array with the interpolated data
+        processed_data[i] = interpolated_data.values
+    
+    return processed_data
+
+def processRawMeteoData(data:pd.DataFrame,sunriseTime:np.ndarray,sunsetTime:np.ndarray,nsamples:int=4,filterWindow:int=240) -> np.ndarray:
+    '''Process the raw meteo data
+    
+    Parameters
+    ----------
+    data (pd.DataFrame)
+        The raw meteo data. It should be a DataFrame where each row represents a sample (day) and
+        each column represents a feature (sensor reading), with the index being the date and the
+        columns being the time of day.
+    sunriseTime (np.ndarray)
+        The sunrise time for each sample in the data. It should be a 1-dimensional array
+        where each element corresponds to the sunrise time for the respective sample in `data`.
+    sunsetTime (np.ndarray)
+        The sunset time for each sample in the data. It should be a 1-dimensional array
+        where each element corresponds to the sunset time for the respective sample in `data`.
+    nsamples (int)
+        The number of samples to generate for each day. Default is 4.
+    filterWindow (int)
+        The window size for the mean filter in minutes. Default is 240.
+        
+    Returns
+    -------
+    np.ndarray
+        The processed meteo data. It is a 2-dimensional array where each row represents a sample
+        and each column represents a feature.
+    '''
+    # Interpolate the missing values in the data
+    data = data.interpolate(method="linear", axis=1)
+
+    # Resample the data to 1 minute intervals so the data is consistently sampled
+    data = data.resample("1T").interpolate(method="linear", axis=1)
+
+    # apply a mean filter to the data (horizontally, along the columns) with a window of 4 hours
+    data = data.rolling(window=240, axis=1, center=True).mean()
 
     # Create an empty array to store the processed data, with size (nsamples, nfeatures)
     processed_data = np.zeros((nsamples, data.shape[1]))
