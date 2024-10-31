@@ -79,8 +79,6 @@ ltpP = ltpP.fillna(method='ffill')
 # fill NaN values in ltp with the next value
 ltpP = ltpP.fillna(method='bfill')
 
-print(ltpP)
-
 # apply a rolling mean filter to ltp
 ltpP_mf = ltpP.rolling(window=240,center=True).mean()
 
@@ -89,8 +87,6 @@ ltpP_mf = ltpP.rolling(window=240,center=True).mean()
 
 #store the data in ltpP
 ltpP = ltpP_mf
-
-print(ltpP)
 
 # rename the columns of ltpP as we did before with plotData
 ltpP = ltpP.rename(columns={sensor: 'ZIM measurements'})
@@ -117,9 +113,6 @@ ltp_stdP = ltpP_zim.groupby(ltpP_zim.index.date).std()
 ltp_medioP = ltp_medioP.iloc[0]
 ltp_stdP = ltp_stdP.iloc[0]
 
-print(ltpP)
-print(ltp_medioP)
-print(ltp_stdP)
 
 # ltp normalized per day (only zim measurements)
 ltpP_zim_norm = (ltpP_zim-ltp_medioP)/ltp_stdP
@@ -128,7 +121,7 @@ ltpP_zim_norm = (ltpP_zim-ltp_medioP)/ltp_stdP
 ltpP['ZIM measurements'] = ltpP_zim_norm
 
 # plot ltpP normalized
-ltpP.plot(subplots=True)
+# ltpP.plot(subplots=True)
 
 # add the normalized zim measurements to the plot dataframe
 ZIMplots['normalized'] = ltpP['ZIM measurements']
@@ -184,7 +177,7 @@ ltpPBase=ltpP
 ltpP_wo_hn = ltpP.drop('Hora_norm',axis=1)
 
 # plot ltpP without Hora_norm
-ltpP_wo_hn.plot(subplots=True)
+# ltpP_wo_hn.plot(subplots=True)
 
 # get the hour at which hora_norm is 6
 ltpP_6 = ltpP.loc[ltpP['Hora_norm']==6,:]
@@ -202,14 +195,13 @@ for ax in plt.gcf().get_axes():
 ltpP = ltpP.loc[ltpP['Hora_norm']>=6,:]
 ltpP = ltpP.loc[ltpP['Hora_norm']<=18,:]
 
-print(ltpP)
-
 # add an copy of the normalized zim measurements to do a plot with night hours marked
 ZIMplots['night'] = ZIMplots['normalized']
 MeteoPlots['night'] = MeteoPlots['filtered']
 
 # drop the hora_norm column
 ltpP = ltpP.drop('Hora_norm',axis=1)
+cropData = ltpP.copy()
 
 #separate the zim columns from the meteo columns
 ltpP_zim = ltpP['ZIM measurements']
@@ -226,32 +218,39 @@ ltpP_meteo_grouped = ltpP_meteo.groupby(pd.qcut(ltpP_meteo.index,4)).mean()
 ltpP_zim_grouped.index = ltpP_zim_grouped.index.map(lambda x: x.mid)
 ltpP_meteo_grouped.index = ltpP_meteo_grouped.index.map(lambda x: x.mid)
 
-#print the grouped data
-print(ltpP_zim_grouped)
-print(ltpP_meteo_grouped)
-
 # convert the index of the grouped data to a datetime object
 ltpP_zim_grouped.index = pd.to_datetime(ltpP_zim_grouped.index)
 ltpP_meteo_grouped.index = pd.to_datetime(ltpP_meteo_grouped.index)
 
 # plot the grouped data
-ltpP_zim_grouped.plot()
-ltpP_meteo_grouped.plot(subplots=True)
+# ltpP_zim_grouped.plot()
+# ltpP_meteo_grouped.plot(subplots=True)
 # get only the data from temperature
 ltpP_meteo_grouped_temp = ltpP_meteo_grouped['Ambient Temperature']
 
 
 #create a figure with 6 subplots
-plt.figure()
 ax = plt.gcf().add_subplot(511)
 # plot the raw data
 ZIMplots['raw'].plot(ax=ax)
+# set y label as "raw data"
+ax.set_ylabel('Raw')
+# remove the x axis tags
+ax.set_xticks([])
 ax = plt.gcf().add_subplot(512)
 # plot the filtered data
 ZIMplots['filtered'].plot(ax=ax)
+# set y label as "filtered data"
+ax.set_ylabel('Filtered')
+# remove the x axis tags
+ax.set_xticks([])
 ax = plt.gcf().add_subplot(513)
 # plot the normalized data
 ZIMplots['normalized'].plot(ax=ax)
+# set y label as "normalized data"
+ax.set_ylabel('Normalized')
+# remove the x axis tags
+ax.set_xticks([])
 ax = plt.gcf().add_subplot(514)
 # plot the data with night hours marked
 ZIMplots['night'].plot(ax=ax)
@@ -259,19 +258,56 @@ ZIMplots['night'].plot(ax=ax)
 ax.axvline(x=ltpP_6.index[0],color='gray')
 # place a vertical line at the hour where hora_norm is 18
 ax.axvline(x=ltpP_18.index[0],color='gray')
+# shadow the night hours from 00:00 to 6:00 and from 18:00 to 24:00
+ax.axvspan(ltpPBase.index[0],ltpP_6.index[0],color='gray',alpha=0.5)
+ax.axvspan(ltpP_18.index[0],ltpPBase.index[-1],color='gray',alpha=0.5)
+
+# set y label as "crop"
+ax.set_ylabel('Crop')
+
+# remove the x axis tags
+ax.set_xticks([])
 
 ax = plt.gcf().add_subplot(515)
+
+ZIMcrop=cropData['ZIM measurements'].dropna()
+# remove the date from the index of the base zim data
+ZIMcrop.index = ZIMcrop.index.time
+# plot the base zim data
+ZIMcrop.plot(ax=ax)
+
+
+# remove the date from the index of the grouped zim data
+ltpP_zim_grouped.index = ltpP_zim_grouped.index.time
 # plot the grouped zim data
-ltpP_zim_grouped.plot(ax=ax)
+ltpP_zim_grouped.plot(ax=ax, marker='x', linestyle='')
+
+#set x ticks to be every 3 hours
+ax.set_xticks([time(6,0),time(9,0),time(12,0),time(15,0),time(18,0)])
+# remove the x axis label
+ax.set_xlabel('')
+# set y label as "averages"
+ax.set_ylabel('Averages')
+
+#make the vertical space between the subplots equal to 0.4
+plt.subplots_adjust(hspace=0.4)
 
 plt.figure()
 ax = plt.gcf().add_subplot(411)
 
 # plot the raw data
 MeteoPlots['raw'].plot(ax=ax)
+# set y label as "raw data"
+ax.set_ylabel('Raw')
+# remove the x axis tags
+ax.set_xticks([])
 ax = plt.gcf().add_subplot(412)
 # plot the filtered data
 MeteoPlots['filtered'].plot(ax=ax)
+# set y label as "filtered data"
+ax.set_ylabel('Filtered')
+# remove the x axis tags
+ax.set_xticks([])
 ax = plt.gcf().add_subplot(413)
 # plot the data with night hours marked
 MeteoPlots['night'].plot(ax=ax)
@@ -279,12 +315,38 @@ MeteoPlots['night'].plot(ax=ax)
 ax.axvline(x=ltpP_6.index[0],color='gray')
 # place a vertical line at the hour where hora_norm is 18
 ax.axvline(x=ltpP_18.index[0],color='gray')
+# shadow the night hours from 00:00 to 6:00 and from 18:00 to 24:00
+ax.axvspan(ltpPBase.index[0],ltpP_6.index[0],color='gray',alpha=0.5)
+ax.axvspan(ltpP_18.index[0],ltpPBase.index[-1],color='gray',alpha=0.5)
+# remove the x axis tags
+ax.set_xticks([])
+# set y label as "crop"
+ax.set_ylabel('Crop')
 
 # add another ax to the plot
 ax = plt.gcf().add_subplot(414)
-# plot the grouped meteo data
-ltpP_meteo_grouped_temp.plot(ax=ax)
 
+# meteo crop
+meteoCrop=cropData['Ambient Temperature'].dropna()
+# remove the date from the index of the base meteo data
+meteoCrop.index = meteoCrop.index.time
+# plot the base meteo data
+meteoCrop.plot(ax=ax)
+
+# remove the date from the index of the grouped meteo data
+ltpP_meteo_grouped_temp.index = ltpP_meteo_grouped_temp.index.time
+# plot the grouped meteo data
+ltpP_meteo_grouped_temp.plot(ax=ax, marker='x', linestyle='')
+
+# set x ticks to be every 3 hours
+ax.set_xticks([time(6,0),time(9,0),time(12,0),time(15,0),time(18,0)])
+# remove the x axis label
+ax.set_xlabel('')
+# set y label as "averages"
+ax.set_ylabel('Averages')
+
+#make the vertical space between the subplots equal to 0.3
+plt.subplots_adjust(hspace=0.3)
 
 plt.show()
 
