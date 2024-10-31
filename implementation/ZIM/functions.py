@@ -214,3 +214,41 @@ def processRawMeteoData(data:pd.DataFrame,sunriseTime:np.ndarray,sunsetTime:np.n
         processed_data[i] = interpolated_data.values
     
     return processed_data
+
+def combineZIMMeteoData(*args:np.ndarray) -> np.ndarray:
+    '''Combine the ZIM and meteo data
+    
+    Parameters
+    ----------
+    *args (np.ndarray)
+        The ZIM and meteo data to combine. Each argument should be a 2-dimensional array
+        where each row represents a sample and each column represents a feature.
+    
+    Returns
+    -------
+    np.ndarray
+        The combined data. It is a 2-dimensional array where each row represents a sample
+        and each column represents a feature.
+    '''
+    # Combine the data by concatenating along the columns
+    return np.concatenate(args, axis=1)
+
+def addData(*args:np.ndarray) -> np.ndarray:
+    '''Add all the data together to form a single dataset
+    
+    Parameters
+    ----------
+    *args (np.ndarray)
+        The data to add. Each argument should be a 2-dimensional array
+        where each row represents a sample and each column represents a feature.
+        Can also be used to add together the target values.
+    
+    Returns
+    -------
+    np.ndarray
+        The added data. It is a 2-dimensional array where each row represents a sample
+        and each column represents a feature, or a 1-dimensional array if the input
+        arrays are 1-dimensional such as target values.
+    '''
+    # Add the data by concatenating new rows
+    return np.concatenate(args, axis=0)
