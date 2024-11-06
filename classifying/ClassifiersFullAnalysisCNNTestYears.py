@@ -99,12 +99,13 @@ verbose=True
 confmat=True
 
 # Report file in results/ZIM/ of root directory, the name of the file is the name of the classifier
-reportFolder='results/ZIM/analysis1619/'
+reportFolder='results/ZIM/analysis19/'
 
 # years to be used as training data
 #years_train=[['2014'], ['2015'], ['2016'], ['2019']]
 years_train=[['2014']]
 years_valid=['2015']
+years_test=['2019']
 
 # classifiers to be used
 classifiers = [
@@ -304,7 +305,7 @@ for idata in range(len(dataFiles)):
 
                     # for each year in the data
                     for year in data["year"].unique():
-                        if testonall or (year not in year_train and year not in years_valid):
+                        if testonall or (year in years_test):
                             # select the data of the year
                             dbtest=data.loc[data["year"]==year].copy()
                             # drop the year column
