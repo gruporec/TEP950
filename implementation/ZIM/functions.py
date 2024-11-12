@@ -1,6 +1,7 @@
 import pandas as pd
 import numpy as np
 from sklearn.svm import SVC
+from joblib import dump, load
 
 '''Contains functions for ZIM and meteo data processing'''
 
@@ -42,7 +43,7 @@ def saveModel(clf:SVC, path:str):
     None
     '''
     # Save the classifier to a file
-    np.save(path, clf.support_vectors_)
+    dump(clf, path)
 
 def loadModel(path:str) -> SVC:
     '''Load a classifier from a file
@@ -56,13 +57,7 @@ def loadModel(path:str) -> SVC:
     SVC: The loaded classifier
     '''
     # Load the classifier from a file
-    support_vectors = np.load(path)
-    # Create a support vector classifier
-    clf = SVC(kernel="linear", C=0.025)
-    # Set the support vectors
-    clf.support_vectors_ = support_vectors
-    # Return the classifier
-    return clf
+    return load(path)
 
 def predict(clf:SVC, data:np.ndarray) -> np.ndarray:
     '''Predict the target values for the data
@@ -102,7 +97,7 @@ def predict_proba(clf:SVC, data:np.ndarray) -> np.ndarray:
     # Predict the probabilities of the target values
     return clf.predict_proba(data)
 
-def processRawZIMData(data:pd.DataFrame,sunriseTime:np.ndarray,sunsetTime:np.ndarray,nsamples:int=80,filterWindow:int=240) -> np.ndarray:
+def processRawZIMData(data: pd.DataFrame, sunriseTime: np.ndarray, sunsetTime: np.ndarray, nsamples: int = 80, filterWindow: int = 240) -> np.ndarray:
     '''Process the raw ZIM data
     
     Parameters
@@ -128,38 +123,44 @@ def processRawZIMData(data:pd.DataFrame,sunriseTime:np.ndarray,sunsetTime:np.nda
         The processed ZIM data. It is a 2-dimensional array where each row represents a sample
         and each column represents a feature.
     '''
+
+    # make sure the column index is a datetimeindex
+    data.columns = pd.to_datetime(data.columns, format="%H:%M:%S")
+
     # Interpolate the missing values in the data
     data = data.interpolate(method="linear", axis=1)
 
     # Resample the data to 1 minute intervals so the data is consistently sampled
-    data = data.resample("1T").interpolate(method="linear", axis=1)
+    data = data.T.resample("1min").interpolate(method="linear").T
 
     # apply a mean filter to the data (horizontally, along the columns) with a window of 4 hours
-    data = data.rolling(window=240, axis=1, center=True).mean()
+    data = data.T.rolling(window=filterWindow, center=True).mean().T
 
     # Normalize the data by subtracting the mean and dividing by the standard deviation
-    data = (data - data.mean(axis=1)[:, np.newaxis]) / data.std(axis=1)[:, np.newaxis]
+    data = (data - data.mean(axis=1).values[:, np.newaxis]) / data.std(axis=1).values[:, np.newaxis]
 
-    # Create an empty array to store the processed data, with size (nsamples, nfeatures)
-    processed_data = np.zeros((nsamples, data.shape[1]))
+    # Create an empty array to store the processed data, with size (data.shape[0], nsamples)
+    processed_data = np.zeros((data.shape[0], nsamples))
 
     # Generate the samples for each day
     for i in range(data.shape[0]):
         # Get the sunrise and sunset times for the current day
-        sunrise = sunriseTime[i]
-        sunset = sunsetTime[i]
+        sunrise = pd.to_datetime(sunriseTime[i], format="%H:%M:%S")
+        sunset = pd.to_datetime(sunsetTime[i], format="%H:%M:%S")
 
         # crop the data to the sunrise-sunset window
-        cropped_data = data.iloc[i, sunrise:sunset]
+        cropped_data = data.iloc[i].between_time(sunrise.time(), sunset.time())
 
-        # interpolate the cropped data to as many samples as needed (nsamples) using the average method
-        interpolated_data = cropped_data.resample(f"{int((sunset - sunrise) / nsamples)}T").mean()
+        # create bins for nsamples sections
+        bins = pd.cut(cropped_data.index, bins=nsamples, labels=False)
+
+        # calculate the mean for each bin
+        binned_data = cropped_data.groupby(bins).mean()
 
         # fill the processed_data array with the interpolated data
-        processed_data[i] = interpolated_data.values
+        processed_data[i] = binned_data.values.flatten()
     
     return processed_data
-
 def processRawMeteoData(data:pd.DataFrame,sunriseTime:np.ndarray,sunsetTime:np.ndarray,nsamples:int=4,filterWindow:int=240) -> np.ndarray:
     '''Process the raw meteo data
     
@@ -186,34 +187,40 @@ def processRawMeteoData(data:pd.DataFrame,sunriseTime:np.ndarray,sunsetTime:np.n
         The processed meteo data. It is a 2-dimensional array where each row represents a sample
         and each column represents a feature.
     '''
+    # make sure the column index is a datetimeindex
+    data.columns = pd.to_datetime(data.columns, format="%H:%M:%S")
+
     # Interpolate the missing values in the data
     data = data.interpolate(method="linear", axis=1)
 
     # Resample the data to 1 minute intervals so the data is consistently sampled
-    data = data.resample("1T").interpolate(method="linear", axis=1)
+    data = data.T.resample("1min").interpolate(method="linear").T
 
     # apply a mean filter to the data (horizontally, along the columns) with a window of 4 hours
-    data = data.rolling(window=240, axis=1, center=True).mean()
+    data = data.T.rolling(window=filterWindow, center=True).mean().T
 
-    # Create an empty array to store the processed data, with size (nsamples, nfeatures)
-    processed_data = np.zeros((nsamples, data.shape[1]))
+    # Create an empty array to store the processed data, with size (data.shape[0], nsamples)
+    processed_data = np.zeros((data.shape[0], nsamples))
 
     # Generate the samples for each day
     for i in range(data.shape[0]):
         # Get the sunrise and sunset times for the current day
-        sunrise = sunriseTime[i]
-        sunset = sunsetTime[i]
+        sunrise = pd.to_datetime(sunriseTime[i], format="%H:%M:%S")
+        sunset = pd.to_datetime(sunsetTime[i], format="%H:%M:%S")
 
         # crop the data to the sunrise-sunset window
-        cropped_data = data.iloc[i, sunrise:sunset]
+        cropped_data = data.iloc[i].between_time(sunrise.time(), sunset.time())
 
-        # interpolate the cropped data to as many samples as needed (nsamples) using the average method
-        interpolated_data = cropped_data.resample(f"{int((sunset - sunrise) / nsamples)}T").mean()
+        # create bins for nsamples sections
+        bins = pd.cut(cropped_data.index, bins=nsamples, labels=False)
+
+        # calculate the mean for each bin
+        binned_data = cropped_data.groupby(bins).mean()
 
         # fill the processed_data array with the interpolated data
-        processed_data[i] = interpolated_data.values
-    
-    return processed_data
+        processed_data[i] = binned_data.values.flatten()
+
+        return processed_data
 
 def combineZIMMeteoData(*args:np.ndarray) -> np.ndarray:
     '''Combine the ZIM and meteo data
