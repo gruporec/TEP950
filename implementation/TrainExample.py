@@ -22,12 +22,12 @@ dataFile='db/ZIMdb14151619meteoraw.csv'
 
 
 # where to save the classifier
-classifierFolder='classifiers/train2014'
-classifierFile='classifier'
+classifierFolder='classifiers/trainAll'
+classifierFile='classifier.clas'
 
 # years to be used as training data
 #years_train=[['2014'], ['2015'], ['2016'], ['2019']]
-years_train=['2014']
+years_train=['2014', '2015', '2016', '2019']
 
 # create the save folder
 if not os.path.exists(classifierFolder):
@@ -99,6 +99,19 @@ processed_data = np.concatenate((processed_data, processed_humidity, processed_r
 
 # create a dataframe from the processed data recovering the original index
 processed_data = pd.DataFrame(processed_data, index=zimdata.index)
+
+# add the stress level to the processed data
+processed_data['Y'] = stress
+
+# remove samples with missing values
+processed_data = processed_data.dropna()
+
+# separate the stress level column from the data
+stress = processed_data['Y']
+processed_data = processed_data.drop(columns='Y')
+
+#save the processed data to a file
+processed_data.to_csv('db/processed_data.csv')
 
 # train the classifier
 classifier = f.trainClassifier(processed_data, stress)
