@@ -107,7 +107,7 @@ processed_data['Y'] = stress
 processed_data = processed_data.dropna()
 
 print("training with ", processed_data.shape[0], " samples")
-print(processed_data)
+
 
 # separate the stress level column from the data
 stress = processed_data['Y']
