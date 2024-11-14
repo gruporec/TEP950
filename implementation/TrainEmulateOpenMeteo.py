@@ -95,7 +95,7 @@ processed_temperature = f.processRawMeteoData(temperature, sunriseTime, sunsetTi
 processed_VPD = f.processRawMeteoData(VPD, sunriseTime, sunsetTime)
 
 # Combine the processed data into a single DataFrame
-processed_data = np.concatenate((processed_data, processed_humidity, processed_temperature), axis=1)
+processed_data = f.combineZIMMeteoData(processed_data, processed_humidity, processed_temperature)
 
 # create a dataframe from the processed data recovering the original index
 processed_data = pd.DataFrame(processed_data, index=zimdata.index)
@@ -107,6 +107,7 @@ processed_data['Y'] = stress
 processed_data = processed_data.dropna()
 
 print("training with ", processed_data.shape[0], " samples")
+print(processed_data)
 
 # separate the stress level column from the data
 stress = processed_data['Y']

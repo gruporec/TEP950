@@ -220,7 +220,7 @@ def processRawMeteoData(data:pd.DataFrame,sunriseTime:np.ndarray,sunsetTime:np.n
         # fill the processed_data array with the interpolated data
         processed_data[i] = binned_data.values.flatten()
 
-        return processed_data
+    return processed_data
 
 def combineZIMMeteoData(*args:np.ndarray) -> np.ndarray:
     '''Combine the ZIM and meteo data
