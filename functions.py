@@ -145,8 +145,8 @@ def processRawZIMData(data: pd.DataFrame, sunriseTime: np.ndarray, sunsetTime: n
     # Generate the samples for each day
     for i in range(data.shape[0]):
         # Get the sunrise and sunset times for the current day
-        sunrise = pd.to_datetime(sunriseTime.iloc[i], format="%H:%M:%S")
-        sunset = pd.to_datetime(sunsetTime.iloc[i], format="%H:%M:%S")
+        sunrise = pd.to_datetime(sunriseTime[i], format="%H:%M:%S")
+        sunset = pd.to_datetime(sunsetTime[i], format="%H:%M:%S")
 
         # crop the data to the sunrise-sunset window
         cropped_data = data.iloc[i].between_time(sunrise.time(), sunset.time())
@@ -205,8 +205,8 @@ def processRawMeteoData(data:pd.DataFrame,sunriseTime:np.ndarray,sunsetTime:np.n
     # Generate the samples for each day
     for i in range(data.shape[0]):
         # Get the sunrise and sunset times for the current day
-        sunrise = pd.to_datetime(sunriseTime.iloc[i], format="%H:%M:%S")
-        sunset = pd.to_datetime(sunsetTime.iloc[i], format="%H:%M:%S")
+        sunrise = pd.to_datetime(sunriseTime[i], format="%H:%M:%S")
+        sunset = pd.to_datetime(sunsetTime[i], format="%H:%M:%S")
 
         # crop the data to the sunrise-sunset window
         cropped_data = data.iloc[i].between_time(sunrise.time(), sunset.time())
