@@ -158,10 +158,10 @@ if __name__ == '__main__':
     print(cmqdad)
 
     # save the confusion matrices to a file
-    np.savetxt('confusionMatrices/' + datasetName + 'DFC_gam' + str(gam) + '_cf' + str(cf) +'.csv', cm, delimiter=',')
+    #np.savetxt('confusionMatrices/' + datasetName + 'DFC_gam' + str(gam) + '_cf' + str(cf) +'.csv', cm, delimiter=',')
 
-    if doQDA:
-        np.savetxt('confusionMatrices/' + datasetName + 'QDA.csv', cmqda, delimiter=',')
+    #if doQDA:
+    #    np.savetxt('confusionMatrices/' + datasetName + 'QDA.csv', cmqda, delimiter=',')
 
         
     #normalize the confusion matrix
