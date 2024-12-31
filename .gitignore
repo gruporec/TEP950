@@ -7,3 +7,5 @@ bases de datos csv/
 db/ZIMdb14151619meteoraw.csv
 db/TDVdb14151619meteoraw.csv
 db/TDVdb14151619raw.csv
+__pycache__/
+*.pyc
