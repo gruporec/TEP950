@@ -1,0 +1,6 @@
+1. Al ejecutar ClassifiersFullAnalysis.py no se encuentran los archivos  'db/TDVdb14151619raw.csv' y 'db/TDVdb14151619meteoraw.csv' (por que no estan en el repo)
+2. Se usa dump de la libreria joblib para guardar modelos en archivos. Habría que usar el modelo entrenado.
+
+TAREAS:
+1. Entrenar clasificador LDA con los datos TDV (sin raw y sin meteo) para todos los años y guardarlo como archivo
+1.1 Para ello ver como se ha hecho con las zims para adaptar el formato de datos a los nuevos (ver clase functions.py)
